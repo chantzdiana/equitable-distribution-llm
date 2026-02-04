@@ -18,4 +18,14 @@ def extract_factors(text: str) -> dict:
     """
     Returns a dictionary mapping factor names to booleans.
     """
-    pass
+    text = text.lower()
+
+    return {
+        "duration_of_marriage": "duration" in text or "length of the marriage" in text,
+        "earning_capacity": "earning" in text or "income" in text,
+        "contributions_to_marriage": "contribution" in text,
+        "age_and_health": any( phrase in text for phrase in [" age ", " health ", " medical"]),
+
+        "misconduct": "misconduct" in text or "fault" in text
+    }
+
