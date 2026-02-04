@@ -1,7 +1,8 @@
 
 import os
 from collections import Counter
-from extract_factors import extract_factors_llm
+#from extract_factors import extract_factors_llm
+from src.extract_factors import extract_factors_llm
 
 
 def load_cases_from_folder(folder_path):
