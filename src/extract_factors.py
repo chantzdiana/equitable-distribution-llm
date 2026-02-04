@@ -18,12 +18,24 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 FACTOR_SCHEMA = [
-    "duration_of_marriage",
-    "earning_capacity",
-    "contributions_to_marriage",
-    "age_and_health",
-    "misconduct"
+    "income_and_property_at_marriage_and_divorce",   # §236(B)(5)(d)(1)
+    "duration_of_marriage_age_and_health",           # §236(B)(5)(d)(2)
+    "custodial_parent_housing_needs",                 # §236(B)(5)(d)(3)
+    "loss_of_inheritance_or_pension",                 # §236(B)(5)(d)(4)
+    "loss_of_health_insurance",                       # §236(B)(5)(d)(5)
+    "maintenance_award",                              # §236(B)(5)(d)(6)
+    "contributions_to_marital_property_and_career",  # §236(B)(5)(d)(7)
+    "liquidity_of_assets",                            # §236(B)(5)(d)(8)
+    "future_financial_circumstances",                 # §236(B)(5)(d)(9)
+    "valuation_difficulty_and_business_assets",      # §236(B)(5)(d)(10)
+    "tax_consequences",                               # §236(B)(5)(d)(11)
+    "wasteful_dissipation_of_assets",                 # §236(B)(5)(d)(12)
+    "improper_transfers_or_encumbrances",             # §236(B)(5)(d)(13)
+    "domestic_violence",                              # §236(B)(5)(d)(14)
+    "companion_animal_best_interests",                # §236(B)(5)(d)(15)
+    "other_just_and_proper_factors",                  # §236(B)(5)(d)(16)
 ]
+
 
 def extract_factors(text: str) -> dict:
     """
@@ -46,11 +58,23 @@ def extract_factors_llm(text: str) -> dict:
     Returns the same schema as extract_factors().
     """
     schema = [
-    "duration_of_marriage",
-    "earning_capacity",
-    "contributions_to_marriage",
-    "age_and_health",
-    "misconduct",
+    "income_and_property_at_marriage_and_divorce",   # §236(B)(5)(d)(1)
+    "duration_of_marriage_age_and_health",           # §236(B)(5)(d)(2)
+    "custodial_parent_housing_needs",                 # §236(B)(5)(d)(3)
+    "loss_of_inheritance_or_pension",                 # §236(B)(5)(d)(4)
+    "loss_of_health_insurance",                       # §236(B)(5)(d)(5)
+    "maintenance_award",                              # §236(B)(5)(d)(6)
+    "contributions_to_marital_property_and_career",  # §236(B)(5)(d)(7)
+    "liquidity_of_assets",                            # §236(B)(5)(d)(8)
+    "future_financial_circumstances",                 # §236(B)(5)(d)(9)
+    "valuation_difficulty_and_business_assets",      # §236(B)(5)(d)(10)
+    "tax_consequences",                               # §236(B)(5)(d)(11)
+    "wasteful_dissipation_of_assets",                 # §236(B)(5)(d)(12)
+    "improper_transfers_or_encumbrances",             # §236(B)(5)(d)(13)
+    "domestic_violence",                              # §236(B)(5)(d)(14)
+    "companion_animal_best_interests",                # §236(B)(5)(d)(15)
+    "other_just_and_proper_factors",                  # §236(B)(5)(d)(16)
+
 ]
 
     prompt = f"""
