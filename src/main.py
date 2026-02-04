@@ -39,14 +39,19 @@ if __name__ == "__main__":
         case_metadata.append(metadata)
 
         factors = extract_factors_llm(text)
+        print("DEBUG MOST WEIGHTED:", factors["most_weighted"])
         all_results.append(factors)
 
     counter = Counter()
 
+    # for result in all_results:
+    #     for factor, present in result.items():
+    #         if present:
+    #             counter[factor] += 1
     for result in all_results:
-        for factor, present in result.items():
-            if present:
-                counter[factor] += 1
+        for factor in result["most_weighted"]:
+            counter[factor] += 1
+
 
     total_cases = len(all_results)
 
@@ -55,31 +60,76 @@ if __name__ == "__main__":
         for factor in counter
     }
 
-    # ===== Lawyer-facing context summary =====
+    # # ===== Lawyer-facing context summary =====
     jurisdictions = {m.get("JURISDICTION") for m in case_metadata if "JURISDICTION" in m}
     courts = {m.get("COURT") for m in case_metadata if "COURT" in m}
     years = sorted(int(m["YEAR"]) for m in case_metadata if "YEAR" in m)
 
-    print("\n=== Analysis Context ===\n")
-    print(f"Jurisdiction: {', '.join(jurisdictions)}")
-    print(f"Courts: {', '.join(courts)}")
+    # print("\n=== Analysis Context ===\n")
+    # print(f"Jurisdiction: {', '.join(jurisdictions)}")
+    # print(f"Courts: {', '.join(courts)}")
+
+    # if years:
+    #     print(f"Years Covered: {years[0]}–{years[-1]}")
+
+    # print(f"Number of Cases Analyzed: {len(case_metadata)}\n")
+
+    # # ===== Factor emphasis summary =====
+    # print("=== New York Equitable Distribution Factor Emphasis ===\n")
+
+    # for factor, freq in sorted(factor_frequencies.items(), key=lambda x: -x[1]):
+    #     if freq >= 0.6:
+    #         label = "Frequently emphasized"
+    #     elif freq >= 0.3:
+    #         label = "Sometimes emphasized"
+    #     else:
+    #         label = "Rarely emphasized"
+
+    #     print(f"{label}: {factor} ({freq:.0%} of cases)")
+
+
+    print("\n=== Equitable Distribution Analysis Summary ===\n")
+
+    print(
+        "This analysis reviews a set of divorce opinions and identifies which statutory\n"
+        "equitable-distribution factors the court appears to rely on most heavily in\n"
+        "reaching its decision. These results reflect dominant judicial reasoning,\n"
+        "not merely whether a factor was mentioned.\n"
+    )
+
+    print("---- Case Context ----")
+    print(f"Jurisdiction analyzed: {', '.join(jurisdictions)}")
+    print(f"Courts represented: {', '.join(courts)}")
 
     if years:
-        print(f"Years Covered: {years[0]}–{years[-1]}")
+        print(f"Years covered: {years[0]}–{years[-1]}")
 
-    print(f"Number of Cases Analyzed: {len(case_metadata)}\n")
+    print(f"Number of cases analyzed: {len(case_metadata)}\n")
 
-    # ===== Factor emphasis summary =====
-    print("=== New York Equitable Distribution Factor Emphasis ===\n")
+    print("---- Factor Emphasis (Dominant Judicial Reasoning) ----\n")
 
-    for factor, freq in sorted(factor_frequencies.items(), key=lambda x: -x[1]):
-        if freq >= 0.6:
-            label = "Frequently emphasized"
-        elif freq >= 0.3:
-            label = "Sometimes emphasized"
-        else:
-            label = "Rarely emphasized"
+    if not counter:
+        print("No dominant factors were detected in the analyzed cases.\n")
+    else:
+        for factor, count in counter.most_common():
+            freq = count / total_cases
 
-        print(f"{label}: {factor} ({freq:.0%} of cases)")
+            if freq >= 0.6:
+                label = "Frequently decisive"
+            elif freq >= 0.3:
+                label = "Sometimes decisive"
+            else:
+                label = "Rarely decisive"
 
+            readable = factor.replace("_", " ")
 
+            print(
+                f"{label}: {readable} "
+                f"(appeared as a primary factor in {count} of {total_cases} cases, {freq:.0%})"
+            )
+
+    print(
+        "\nInterpretation: A factor labeled 'Frequently decisive' appeared to drive the court's\n"
+        "reasoning in a majority of the analyzed cases. This summary is descriptive and does\n"
+        "not predict outcomes in any individual case."
+    )

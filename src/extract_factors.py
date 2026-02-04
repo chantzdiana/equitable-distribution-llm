@@ -77,22 +77,52 @@ def extract_factors_llm(text: str) -> dict:
 
 ]
 
+    # prompt = f"""
+    # You are a system that extracts structured data.
+
+    # Return ONLY valid JSON.
+    # Do not include explanations, comments, or markdown.
+
+    # The JSON must have exactly these keys:
+    # {schema}
+
+    # Each value must be true or false.
+
+    # Text:
+    # {text}
+
+    # JSON:
+    # """
     prompt = f"""
-    You are a system that extracts structured data.
+    You are analyzing a divorce opinion applying New York equitable distribution law.
 
-    Return ONLY valid JSON.
-    Do not include explanations, comments, or markdown.
+    TASK:
 
-    The JSON must have exactly these keys:
+    1. Identify which statutory factors are meaningfully discussed in the court's reasoning.
+    2. Then identify which factor or factors the court appears to rely on MOST HEAVILY in reaching its decision.
+    - These are the factors that seem decisive, emphasized, or outcome-driving.
+    - There may be one or multiple such factors.
+    - Do NOT guess — only include factors clearly emphasized.
+
+    Return ONLY valid JSON in the following format:
+
+    {{
+    "mentioned": {{
+        "FACTOR_1": true/false,
+        "FACTOR_2": true/false,
+        ...
+    }},
+    "most_weighted": ["FACTOR_NAME", ...]
+    }}
+
+    Use ONLY the following factors:
+
     {schema}
 
-    Each value must be true or false.
-
-    Text:
+    Case text:
     {text}
-
-    JSON:
     """
+
 
     response = client.chat.completions.create(
     model="gpt-4o-mini",
@@ -103,11 +133,57 @@ def extract_factors_llm(text: str) -> dict:
     content = response.choices[0].message.content
     print("RAW LLM OUTPUT:", content)
 
-    try:
-        return json.loads(content)
-    except json.JSONDecodeError:
-        return {key: False for key in schema}
+    # try:
+    #     return json.loads(content)
+    # except json.JSONDecodeError:
+    #     return {key: False for key in schema}
 
+    # try:
+    #     parsed = json.loads(content)
+    # except json.JSONDecodeError:
+    #     return {
+    #         "mentioned": {factor: False for factor in FACTOR_SCHEMA},
+    #         "most_weighted": []
+    #     }
+    clean = content.strip()
+
+    # Remove markdown code fences if present
+    # if clean.startswith("```"):
+    #     clean = clean.split("```", 1)[1]
+    #     clean = clean.rsplit("```", 1)[0].strip()
+
+    # clean = content.strip()
+
+# Remove markdown code fences (``` or ```json)
+    if clean.startswith("```"):
+        clean = clean.split("```", 1)[1]        # remove first ```
+        clean = clean.lstrip("json").strip()    # remove optional 'json'
+        if "```" in clean:
+            clean = clean.rsplit("```", 1)[0]   # remove closing ```
+        clean = clean.strip()
+
+
+    try:
+        parsed = json.loads(clean)
+    except json.JSONDecodeError:
+        return {
+            "mentioned": {factor: False for factor in FACTOR_SCHEMA},
+            "most_weighted": []
+        }
+
+
+    # Safety normalization
+    mentioned = parsed.get("mentioned", {})
+    most_weighted = parsed.get("most_weighted", [])
+
+    # Ensure all schema keys exist
+    for factor in FACTOR_SCHEMA:
+        mentioned.setdefault(factor, False)
+
+    return {
+        "mentioned": mentioned,
+        "most_weighted": most_weighted
+    }
 
 
 
