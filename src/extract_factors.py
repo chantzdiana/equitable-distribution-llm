@@ -29,3 +29,11 @@ def extract_factors(text: str) -> dict:
         "misconduct": "misconduct" in text or "fault" in text
     }
 
+def extract_factors_llm(text: str) -> dict:
+    """
+    Uses an LLM to extract equitable-distribution factors from text.
+    Returns the same schema as extract_factors().
+    """
+    pass
+
+
