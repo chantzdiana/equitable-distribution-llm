@@ -180,9 +180,20 @@ def extract_factors_llm(text: str) -> dict:
     for factor in FACTOR_SCHEMA:
         mentioned.setdefault(factor, False)
 
+    # ---- Confidence scoring ----
+    num_weighted = len(most_weighted)
+
+    if num_weighted == 1:
+        confidence = "high"
+    elif num_weighted == 2:
+        confidence = "medium"
+    else:
+        confidence = "low"
+
     return {
         "mentioned": mentioned,
-        "most_weighted": most_weighted
+        "most_weighted": most_weighted,
+        "confidence": confidence
     }
 
 

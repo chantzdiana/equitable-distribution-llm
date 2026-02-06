@@ -1,5 +1,6 @@
 
 import os
+import json
 from collections import Counter
 #from extract_factors import extract_factors_llm
 from src.extract_factors import extract_factors_llm
@@ -34,13 +35,31 @@ if __name__ == "__main__":
     all_results = []
     case_metadata = []
 
+    os.makedirs("data/eval", exist_ok=True)
+
     for filename, text in cases:
+        if filename != "ny_obrien_excerpt.txt":
+            continue
+        
         metadata = extract_metadata(text)
         case_metadata.append(metadata)
 
         factors = extract_factors_llm(text)
-        print("DEBUG MOST WEIGHTED:", factors["most_weighted"])
+        # print("DEBUG MOST WEIGHTED:", factors["most_weighted"])
+        # new
         all_results.append(factors)
+        # ---- Evaluation logging ----
+        eval_record = {
+        "file": filename,
+        "metadata": metadata,
+        "most_weighted": factors["most_weighted"],
+        "confidence": factors["confidence"],
+        "mentioned": factors["mentioned"]
+        }
+
+
+    with open("data/eval/eval_log.jsonl", "a") as f:
+        f.write(json.dumps(eval_record) + "\n")
 
     counter = Counter()
 

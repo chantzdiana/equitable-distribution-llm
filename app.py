@@ -33,6 +33,8 @@ if st.button("Analyze"):
                 case_metadata.append(metadata)
 
                 factors = extract_factors_llm(text)
+                st.write("Confidence:", factors["confidence"])
+
                 
                 all_results.append(factors)
 
