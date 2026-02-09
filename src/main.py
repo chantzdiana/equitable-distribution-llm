@@ -1,9 +1,9 @@
 
 import os
 import json
-from collections import Counter
-#from extract_factors import extract_factors_llm
-from src.extract_factors import extract_factors_llm
+from collections import Counter, defaultdict
+from extract_factors import extract_factors, extract_factors_llm
+#from src.extract_factors import extract_factors_llm
 
 
 def load_cases_from_folder(folder_path):
@@ -38,8 +38,11 @@ if __name__ == "__main__":
     os.makedirs("data/eval", exist_ok=True)
 
     for filename, text in cases:
-        if filename != "ny_obrien_excerpt.txt":
-            continue
+        #if filename != "ny_obrien_excerpt.txt":
+         #   continue
+        # --- Rule-based baseline ---
+        rule_based = extract_factors(text)
+        print("RULE-BASED:", rule_based)
         
         metadata = extract_metadata(text)
         case_metadata.append(metadata)
@@ -152,3 +155,29 @@ if __name__ == "__main__":
         "reasoning in a majority of the analyzed cases. This summary is descriptive and does\n"
         "not predict outcomes in any individual case."
     )
+
+# ============================
+# INSERT JUDGE BLOCK HERE
+# ============================
+
+judge_counter = defaultdict(Counter)
+
+for metadata, result in zip(case_metadata, all_results):
+    judge = metadata.get("JUDGE", "Unknown")
+
+    for factor in result["most_weighted"]:
+        judge_counter[judge][factor] += 1
+
+
+print("\n=== Judge-Level Factor Tendencies ===\n")
+
+for judge, counter in judge_counter.items():
+    print(f"Judge: {judge}")
+
+    total = sum(counter.values())
+    for factor, count in counter.most_common():
+        freq = count / total
+        readable = factor.replace("_", " ")
+        print(f"  - {readable} ({freq:.0%})")
+
+    print()

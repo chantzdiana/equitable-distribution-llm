@@ -1,5 +1,7 @@
 JURISDICTION: New York
 COURT: Supreme Court
 YEAR: 2019
+JUDGE: Kim
+
 
 The evidence established that the husband transferred marital funds to accounts held in his sole name shortly before commencement of the matrimonial action and without fair consideration. The court found that such conduct constituted wasteful dissipation of marital assets and weighed this factor heavily in fashioning an equitable distribution.

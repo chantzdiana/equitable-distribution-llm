@@ -1,5 +1,6 @@
 JURISDICTION: New York
 COURT: Appellate Division
 YEAR: 1996
+JUDGE: Paul
 
 In determining an equitable distribution of marital property, the court properly considered the wife’s substantial direct and indirect contributions to the husband’s career during the marriage. Although the husband’s professional license itself was not subject to distribution, the enhanced earning capacity developed during the marriage was a relevant consideration. The duration of the marriage further supported the court’s distributive award.
