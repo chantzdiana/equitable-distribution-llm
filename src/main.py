@@ -4,6 +4,7 @@ import json
 from collections import Counter, defaultdict
 from extract_factors import extract_factors, extract_factors_llm
 #from src.extract_factors import extract_factors_llm
+import csv
 
 
 def load_cases_from_folder(folder_path):
@@ -181,3 +182,31 @@ for judge, counter in judge_counter.items():
         print(f"  - {readable} ({freq:.0%})")
 
     print()
+
+
+
+print("\n=== Evaluation Against Human Labels ===\n")
+
+# Load human labels
+human_labels = {}
+with open("data/eval/human_labels.csv", newline="") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        human_labels[row["file"]] = row["correct_factor"]
+
+correct = 0
+total = 0
+
+for metadata, result in zip(case_metadata, all_results):
+    filename = metadata.get("FILE")  # or use your stored filename variable
+    if filename in human_labels:
+        total += 1
+        model_factors = result["most_weighted"]
+        if human_labels[filename] in model_factors:
+            correct += 1
+
+if total > 0:
+    accuracy = correct / total
+    print(f"Accuracy: {accuracy:.0%} ({correct}/{total} correct)")
+else:
+    print("No labeled cases found.")
