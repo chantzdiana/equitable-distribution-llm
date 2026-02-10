@@ -46,6 +46,7 @@ if __name__ == "__main__":
         print("RULE-BASED:", rule_based)
         
         metadata = extract_metadata(text)
+        metadata["FILE"] = filename
         case_metadata.append(metadata)
 
         factors = extract_factors_llm(text)
