@@ -94,17 +94,39 @@ def extract_factors_llm(text: str) -> dict:
     # JSON:
     # """
     prompt = f"""
-    You are analyzing a divorce opinion applying New York equitable distribution law.
+    You are analyzing a judicial divorce opinion applying New York equitable distribution law.
 
-    TASK:
+    Your task is NOT to count mentions. Your task is to detect LEGAL REASONING.
 
-    1. Identify which statutory factors are meaningfully discussed in the court's reasoning.
-    2. Then identify which factor or factors the court appears to rely on MOST HEAVILY in reaching its decision.
-    - These are the factors that seem decisive, emphasized, or outcome-driving.
-    - There may be one or multiple such factors.
-    - Do NOT guess — only include factors clearly emphasized.
+    A factor is "most_weighted" ONLY if the court clearly treats it as:
+    - decisive
+    - outcome-driving
+    - primary
+    - central to the decision
+    - heavily relied upon
+    - explicitly emphasized in reasoning
 
-    Return ONLY valid JSON in the following format:
+    Signals of decisive weighting include language like:
+    "primary consideration"
+    "the court relies heavily on"
+    "the key factor"
+    "most significant"
+    "determinative"
+    "critical to the outcome"
+    "the court gives substantial weight to"
+    "the decision turns on"
+    "the court bases its conclusion on"
+
+    Steps:
+
+    1. Identify which statutory factors are meaningfully discussed.
+    2. Identify ONLY the factor(s) that appear MOST DECISIVE in the court’s reasoning.
+    3. If no factor is clearly decisive, return an empty list for "most_weighted".
+    4. Do NOT guess.
+    5. Do NOT infer from background facts alone.
+    6. Focus ONLY on judicial reasoning language.
+
+    Return ONLY valid JSON in this format:
 
     {{
     "mentioned": {{
@@ -115,13 +137,14 @@ def extract_factors_llm(text: str) -> dict:
     "most_weighted": ["FACTOR_NAME", ...]
     }}
 
-    Use ONLY the following factors:
+    Use ONLY these factors:
 
     {schema}
 
     Case text:
     {text}
     """
+
 
 
     response = client.chat.completions.create(
