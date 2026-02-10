@@ -199,12 +199,25 @@ correct = 0
 total = 0
 
 for metadata, result in zip(case_metadata, all_results):
-    filename = metadata.get("FILE")  # or use your stored filename variable
+    filename = metadata.get("FILE")
+
     if filename in human_labels:
         total += 1
-        model_factors = result["most_weighted"]
-        if human_labels[filename] in model_factors:
+
+        human = human_labels[filename]
+        model = result["most_weighted"]
+
+        is_correct = human in model
+
+        if is_correct:
             correct += 1
+
+        # ---- PER CASE REPORT ----
+        print(f"Case: {filename}")
+        print(f"  Model dominant factor(s): {model}")
+        print(f"  Human correct factor: {human}")
+        print(f"  Result: {'CORRECT' if is_correct else 'WRONG'}\n")
+
 
 if total > 0:
     accuracy = correct / total
