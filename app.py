@@ -172,6 +172,11 @@ elif page == "How the System Was Evaluated":
     total = 0
     confidence_counter = Counter()
     factor_counter = Counter()
+
+    confidence_correct = Counter()
+    confidence_total = Counter()
+
+
     # Precision / Recall counters
     true_positive = defaultdict(int)
     false_positive = defaultdict(int)
@@ -196,8 +201,9 @@ elif page == "How the System Was Evaluated":
             total += 1
             human = human_labels[file]
             is_correct = human in model
-            
+            confidence_total[confidence] += 1
             if is_correct:
+                confidence_correct[confidence] += 1
                 correct += 1
             if not is_correct:
                 error_cases.append({
@@ -275,6 +281,27 @@ elif page == "How the System Was Evaluated":
             "in misclassification. This is critical for improving reliability and understanding "
             "model limitations."
         )
+    # ----------------------------
+    # Confidence Reliability
+    # ----------------------------
+    st.subheader("Confidence Reliability")
+
+    for level in confidence_total:
+        total_c = confidence_total[level]
+        correct_c = confidence_correct[level]
+
+        accuracy_c = correct_c / total_c if total_c > 0 else 0
+
+        st.write(
+            f"**{level.capitalize()} confidence** — Accuracy: {accuracy_c:.0%} "
+            f"({correct_c}/{total_c} correct)"
+        )
+
+    st.caption(
+        "This section evaluates whether the model's confidence score correlates with accuracy. "
+        "Ideally, higher confidence predictions should be more reliable."
+    )
+
 
     # ----------------------------
     # Confidence Distribution
