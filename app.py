@@ -4,6 +4,7 @@ from collections import Counter
 from src.extract_factors import extract_factors_llm, FACTOR_SCHEMA
 from src.main import extract_metadata  # reuse your existing function
 import json
+from collections import defaultdict
 
 page = st.sidebar.radio(
     "Navigation",
@@ -171,6 +172,11 @@ elif page == "How the System Was Evaluated":
     total = 0
     confidence_counter = Counter()
     factor_counter = Counter()
+    # Precision / Recall counters
+    true_positive = defaultdict(int)
+    false_positive = defaultdict(int)
+    false_negative = defaultdict(int)
+
 
     per_case_results = []
 
@@ -198,6 +204,16 @@ elif page == "How the System Was Evaluated":
                 "confidence": confidence,
                 "correct": is_correct
             })
+            # ---- Precision / Recall tracking ----
+        for factor in model:
+            if factor == human:
+                true_positive[factor] += 1
+            else:
+                false_positive[factor] += 1
+
+        if human not in model:
+            false_negative[human] += 1
+
 
     accuracy = correct / total if total > 0 else 0
 
@@ -210,6 +226,28 @@ elif page == "How the System Was Evaluated":
     col1.metric("Accuracy", f"{accuracy:.0%}")
     col2.metric("Cases Evaluated", total)
     col3.metric("Total Logged Cases", len(eval_records))
+
+    # ----------------------------
+    # Precision / Recall
+    # ----------------------------
+    st.subheader("Precision & Recall by Factor")
+
+    all_factors = set(list(true_positive.keys()) + list(false_negative.keys()))
+
+    for factor in all_factors:
+        tp = true_positive[factor]
+        fp = false_positive[factor]
+        fn = false_negative[factor]
+
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+
+        readable = factor.replace("_", " ")
+
+        st.write(
+            f"**{readable}** — Precision: {precision:.0%}, Recall: {recall:.0%}"
+        )
+
 
     # ----------------------------
     # Confidence Distribution
