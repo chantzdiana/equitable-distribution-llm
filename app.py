@@ -179,6 +179,8 @@ elif page == "How the System Was Evaluated":
 
 
     per_case_results = []
+    error_cases = []
+
 
     for rec in eval_records:
         file = rec["file"]
@@ -194,8 +196,16 @@ elif page == "How the System Was Evaluated":
             total += 1
             human = human_labels[file]
             is_correct = human in model
+            
             if is_correct:
                 correct += 1
+            if not is_correct:
+                error_cases.append({
+                    "file": file,
+                    "model": ", ".join(model) if model else "None",
+                    "human": human,
+                    "confidence": confidence
+                })
 
             per_case_results.append({
                 "file": file,
@@ -248,6 +258,23 @@ elif page == "How the System Was Evaluated":
             f"**{readable}** — Precision: {precision:.0%}, Recall: {recall:.0%}"
         )
 
+    # ----------------------------
+    # Error Analysis
+    # ----------------------------
+    st.subheader("Model Error Analysis")
+
+    if not error_cases:
+        st.write("No errors detected — model matched human labels for all evaluated cases.")
+    else:
+        st.write("The following cases were incorrectly classified by the model:")
+
+        st.dataframe(error_cases)
+
+        st.caption(
+            "Error analysis helps identify where the model struggles and reveals patterns "
+            "in misclassification. This is critical for improving reliability and understanding "
+            "model limitations."
+        )
 
     # ----------------------------
     # Confidence Distribution
