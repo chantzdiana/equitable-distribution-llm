@@ -2,8 +2,8 @@
 import os
 import json
 from collections import Counter, defaultdict
-from extract_factors import extract_factors, extract_factors_llm
-#from src.extract_factors import extract_factors_llm
+#from extract_factors import extract_factors, extract_factors_llm
+from src.extract_factors import extract_factors_llm, extract_factors
 import csv
 
 
@@ -158,69 +158,69 @@ if __name__ == "__main__":
         "not predict outcomes in any individual case."
     )
 
-# ============================
-# INSERT JUDGE BLOCK HERE
-# ============================
+    # ============================
+    # INSERT JUDGE BLOCK HERE
+    # ============================
 
-judge_counter = defaultdict(Counter)
+    judge_counter = defaultdict(Counter)
 
-for metadata, result in zip(case_metadata, all_results):
-    judge = metadata.get("JUDGE", "Unknown")
+    for metadata, result in zip(case_metadata, all_results):
+        judge = metadata.get("JUDGE", "Unknown")
 
-    for factor in result["most_weighted"]:
-        judge_counter[judge][factor] += 1
-
-
-print("\n=== Judge-Level Factor Tendencies ===\n")
-
-for judge, counter in judge_counter.items():
-    print(f"Judge: {judge}")
-
-    total = sum(counter.values())
-    for factor, count in counter.most_common():
-        freq = count / total
-        readable = factor.replace("_", " ")
-        print(f"  - {readable} ({freq:.0%})")
-
-    print()
+        for factor in result["most_weighted"]:
+            judge_counter[judge][factor] += 1
 
 
+    print("\n=== Judge-Level Factor Tendencies ===\n")
 
-print("\n=== Evaluation Against Human Labels ===\n")
+    for judge, counter in judge_counter.items():
+        print(f"Judge: {judge}")
 
-# Load human labels
-human_labels = {}
-with open("data/eval/human_labels.csv", newline="") as f:
-    reader = csv.DictReader(f)
-    for row in reader:
-        human_labels[row["file"]] = row["correct_factor"]
+        total = sum(counter.values())
+        for factor, count in counter.most_common():
+            freq = count / total
+            readable = factor.replace("_", " ")
+            print(f"  - {readable} ({freq:.0%})")
 
-correct = 0
-total = 0
-
-for metadata, result in zip(case_metadata, all_results):
-    filename = metadata.get("FILE")
-
-    if filename in human_labels:
-        total += 1
-
-        human = human_labels[filename]
-        model = result["most_weighted"]
-
-        is_correct = human in model
-
-        if is_correct:
-            correct += 1
-
-        # ---- PER CASE REPORT ----
-        print(f"Case: {filename}")
-        print(f"  Model dominant factor(s): {model}")
-        print(f"  Human correct factor: {human}")
-        print(f"  Result: {'CORRECT' if is_correct else 'WRONG'}\n")
+        print()
 
 
-if total > 0:
-    accuracy = correct / total
-    print(f"Accuracy: {accuracy:.0%} ({correct}/{total} correct)")
-else:
-    print("No labeled cases found.")
+
+    print("\n=== Evaluation Against Human Labels ===\n")
+
+    # Load human labels
+    human_labels = {}
+    with open("data/eval/human_labels.csv", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            human_labels[row["file"]] = row["correct_factor"]
+
+    correct = 0
+    total = 0
+
+    for metadata, result in zip(case_metadata, all_results):
+        filename = metadata.get("FILE")
+
+        if filename in human_labels:
+            total += 1
+
+            human = human_labels[filename]
+            model = result["most_weighted"]
+
+            is_correct = human in model
+
+            if is_correct:
+                correct += 1
+
+            # ---- PER CASE REPORT ----
+            print(f"Case: {filename}")
+            print(f"  Model dominant factor(s): {model}")
+            print(f"  Human correct factor: {human}")
+            print(f"  Result: {'CORRECT' if is_correct else 'WRONG'}\n")
+
+
+    if total > 0:
+        accuracy = correct / total
+        print(f"Accuracy: {accuracy:.0%} ({correct}/{total} correct)")
+    else:
+        print("No labeled cases found.")
