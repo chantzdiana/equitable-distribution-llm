@@ -37,34 +37,58 @@ if __name__ == "__main__":
     case_metadata = []
 
     os.makedirs("data/eval", exist_ok=True)
+    with open("data/eval/eval_log.jsonl", "w") as f:
 
-    for filename, text in cases:
-        #if filename != "ny_obrien_excerpt.txt":
-         #   continue
-        # --- Rule-based baseline ---
-        rule_based = extract_factors(text)
-        print("RULE-BASED:", rule_based)
+        for filename, text in cases:
+            # --- Rule-based baseline ---
+            rule_based = extract_factors(text)
+            print("RULE-BASED:", rule_based)
+
+            metadata = extract_metadata(text)
+            metadata["FILE"] = filename
+            case_metadata.append(metadata)
+
+            factors = extract_factors_llm(text)
+            all_results.append(factors)
+
+            # ---- Evaluation logging ----
+            eval_record = {
+                "file": filename,
+                "metadata": metadata,
+                "most_weighted": factors["most_weighted"],
+                "confidence": factors["confidence"],
+                "mentioned": factors["mentioned"]
+            }
+
+            f.write(json.dumps(eval_record) + "\n")
+
+    # for filename, text in cases:
+    #     #if filename != "ny_obrien_excerpt.txt":
+    #      #   continue
+    #     # --- Rule-based baseline ---
+    #     rule_based = extract_factors(text)
+    #     print("RULE-BASED:", rule_based)
         
-        metadata = extract_metadata(text)
-        metadata["FILE"] = filename
-        case_metadata.append(metadata)
+    #     metadata = extract_metadata(text)
+    #     metadata["FILE"] = filename
+    #     case_metadata.append(metadata)
 
-        factors = extract_factors_llm(text)
-        # print("DEBUG MOST WEIGHTED:", factors["most_weighted"])
-        # new
-        all_results.append(factors)
-        # ---- Evaluation logging ----
-        eval_record = {
-        "file": filename,
-        "metadata": metadata,
-        "most_weighted": factors["most_weighted"],
-        "confidence": factors["confidence"],
-        "mentioned": factors["mentioned"]
-        }
+    #     factors = extract_factors_llm(text)
+    #     # print("DEBUG MOST WEIGHTED:", factors["most_weighted"])
+    #     # new
+    #     all_results.append(factors)
+    #     # ---- Evaluation logging ----
+    #     eval_record = {
+    #     "file": filename,
+    #     "metadata": metadata,
+    #     "most_weighted": factors["most_weighted"],
+    #     "confidence": factors["confidence"],
+    #     "mentioned": factors["mentioned"]
+    #     }
 
-
-    with open("data/eval/eval_log.jsonl", "a") as f:
-        f.write(json.dumps(eval_record) + "\n")
+    # comment out for now
+    # with open("data/eval/eval_log.jsonl", "a") as f:
+    #     f.write(json.dumps(eval_record) + "\n")
 
     counter = Counter()
 

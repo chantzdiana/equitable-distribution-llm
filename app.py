@@ -3,6 +3,7 @@ import streamlit as st
 from collections import Counter
 from src.extract_factors import extract_factors_llm, FACTOR_SCHEMA
 from src.main import extract_metadata  # reuse your existing function
+import json
 
 page = st.sidebar.radio(
     "Navigation",
@@ -106,65 +107,136 @@ if page == "Analyzer":
             )
 elif page == "How the System Was Evaluated":
 
-    st.title("How This System Was Evaluated")
-
+    st.title("Model Validation Dashboard")
     st.markdown("""
-    ### What the Model Does
-    This system analyzes divorce opinions applying New York equitable distribution law and identifies which statutory factors the court relied on most heavily in reaching its decision. It focuses on *judicial reasoning*, not merely whether a factor was mentioned.
+        **About This Validation Dashboard**
 
-    ---
+        This dashboard evaluates how well the system identifies the *dominant equitable-distribution factor* in judicial opinions.
 
-    ### How Factors Are Extracted
-    A large language model (LLM) reads each opinion and identifies:
+        The results shown here are based on a fixed evaluation dataset — not the files uploaded in the Analyzer. The dataset consists of real New York divorce opinions that were manually reviewed and labeled by a human using legal judgment.
 
-    - Which statutory factors are discussed
-    - Which factor(s) appear **most decisive** in the court’s reasoning
+        For each case, the model’s detected dominant factor is compared against the human-labeled ground truth. Accuracy therefore reflects how closely the system matches human legal reasoning.
 
-    The model looks for reasoning signals such as:
-    - “primary consideration”
-    - “the court relies heavily on”
-    - “determinative”
-    - “critical to the outcome”
+        Why this matters:
 
-    ---
+        - It verifies the system is **tested, not just demonstrated**
+        - It measures whether the model captures **true judicial reasoning**
+        - It helps identify where the system is reliable vs uncertain
+        - It provides transparency for lawyers using the tool
 
-    ### Human-Labeled Evaluation Dataset
-    To verify correctness, a set of real New York cases was manually reviewed and labeled by a human using legal judgment. Each case was labeled with the factor that truly drove the court’s decision.
+        This validation ensures the system is grounded in real legal analysis rather than simple keyword detection.
+        """)
 
-    The model’s output is compared against this ground-truth dataset.
 
-    ---
+    import csv
+    from collections import Counter
 
-    ### Accuracy Measurement
-    The system reports how often the model correctly identified the dominant factor compared to the human-labeled dataset.
+    # ----------------------------
+    # Load human labels
+    # ----------------------------
+    human_labels = {}
+    try:
+        with open("data/eval/human_labels.csv", newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                human_labels[row["file"]] = row["correct_factor"]
+    except FileNotFoundError:
+        st.warning("No human_labels.csv found.")
+        st.stop()
 
-    This ensures the model is **tested, not just demonstrated.**
+    # ----------------------------
+    # Load model evaluation log
+    # ----------------------------
+    eval_records = []
+    log_path = "data/eval/eval_log.jsonl"
 
-    ---
+    try:
+        with open(log_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue   # skip blank lines
+                eval_records.append(json.loads(line))
+    except FileNotFoundError:
+        st.warning("No evaluation log found.")
+        st.stop()
+    except json.JSONDecodeError:
+        st.error("Evaluation log is corrupted or improperly formatted.")
+        st.stop()
 
-    ### Confidence Scoring
-    Each result includes a confidence level:
+    # ----------------------------
+    # Compute accuracy
+    # ----------------------------
+    correct = 0
+    total = 0
+    confidence_counter = Counter()
+    factor_counter = Counter()
 
-    - **High** — clear decisive reasoning detected  
-    - **Medium** — multiple important factors  
-    - **Low** — ambiguous or weak signals  
+    per_case_results = []
 
-    This helps users understand reliability.
+    for rec in eval_records:
+        file = rec["file"]
+        model = rec["most_weighted"]
+        confidence = rec.get("confidence", "unknown")
 
-    ---
+        confidence_counter[confidence] += 1
 
-    ### What the Testing Shows
-    The evaluation confirms the model can correctly identify dominant equitable-distribution reasoning in judicial opinions and aggregate patterns across cases and judges.
+        for f in model:
+            factor_counter[f] += 1
 
-    ---
+        if file in human_labels:
+            total += 1
+            human = human_labels[file]
+            is_correct = human in model
+            if is_correct:
+                correct += 1
 
-    ### Limitations
-    - The system describes patterns; it does not predict outcomes with certainty.
-    - Accuracy depends on the quality and representativeness of cases analyzed.
-    - Legal decisions are fact-specific and involve judicial discretion.
+            per_case_results.append({
+                "file": file,
+                "model": ", ".join(model) if model else "None",
+                "human": human,
+                "confidence": confidence,
+                "correct": is_correct
+            })
 
-    ---
+    accuracy = correct / total if total > 0 else 0
 
-    ### Purpose
-    This tool is designed as an experimental legal analytics system to explore how AI can help lawyers understand judicial reasoning patterns in equitable-distribution cases.
-    """)
+    # ----------------------------
+    # Top Metrics
+    # ----------------------------
+    st.subheader("Overall Model Performance")
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Accuracy", f"{accuracy:.0%}")
+    col2.metric("Cases Evaluated", total)
+    col3.metric("Total Logged Cases", len(eval_records))
+
+    # ----------------------------
+    # Confidence Distribution
+    # ----------------------------
+    st.subheader("Confidence Distribution")
+
+    for k, v in confidence_counter.items():
+        st.write(f"{k.capitalize()}: {v} cases")
+
+    # ----------------------------
+    # Dominant Factor Distribution
+    # ----------------------------
+    st.subheader("Dominant Factor Detection")
+
+    for factor, count in factor_counter.most_common():
+        readable = factor.replace("_", " ")
+        st.write(f"{readable}: {count} cases")
+
+    # ----------------------------
+    # Per-Case Results Table
+    # ----------------------------
+    st.subheader("Per-Case Evaluation")
+
+    st.dataframe(per_case_results)
+
+    st.caption(
+    "Note: The validation dashboard reflects performance on a fixed evaluation dataset. "
+    "The Analyzer page processes only the files uploaded by the user."
+    )
+
