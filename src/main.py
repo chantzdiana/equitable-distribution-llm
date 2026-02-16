@@ -31,7 +31,7 @@ def extract_metadata(text):
 
 
 if __name__ == "__main__":
-    cases = load_cases_from_folder("data/raw/ny_real_snippets")
+    cases = load_cases_from_folder("data/raw/ny_real_snippets") + load_cases_from_folder("data/raw/long_cases")
 
     all_results = []
     case_metadata = []
@@ -62,40 +62,11 @@ if __name__ == "__main__":
 
             f.write(json.dumps(eval_record) + "\n")
 
-    # for filename, text in cases:
-    #     #if filename != "ny_obrien_excerpt.txt":
-    #      #   continue
-    #     # --- Rule-based baseline ---
-    #     rule_based = extract_factors(text)
-    #     print("RULE-BASED:", rule_based)
-        
-    #     metadata = extract_metadata(text)
-    #     metadata["FILE"] = filename
-    #     case_metadata.append(metadata)
-
-    #     factors = extract_factors_llm(text)
-    #     # print("DEBUG MOST WEIGHTED:", factors["most_weighted"])
-    #     # new
-    #     all_results.append(factors)
-    #     # ---- Evaluation logging ----
-    #     eval_record = {
-    #     "file": filename,
-    #     "metadata": metadata,
-    #     "most_weighted": factors["most_weighted"],
-    #     "confidence": factors["confidence"],
-    #     "mentioned": factors["mentioned"]
-    #     }
-
-    # comment out for now
-    # with open("data/eval/eval_log.jsonl", "a") as f:
-    #     f.write(json.dumps(eval_record) + "\n")
+    
 
     counter = Counter()
 
-    # for result in all_results:
-    #     for factor, present in result.items():
-    #         if present:
-    #             counter[factor] += 1
+    
     for result in all_results:
         for factor in result["most_weighted"]:
             counter[factor] += 1
@@ -113,27 +84,7 @@ if __name__ == "__main__":
     courts = {m.get("COURT") for m in case_metadata if "COURT" in m}
     years = sorted(int(m["YEAR"]) for m in case_metadata if "YEAR" in m)
 
-    # print("\n=== Analysis Context ===\n")
-    # print(f"Jurisdiction: {', '.join(jurisdictions)}")
-    # print(f"Courts: {', '.join(courts)}")
-
-    # if years:
-    #     print(f"Years Covered: {years[0]}–{years[-1]}")
-
-    # print(f"Number of Cases Analyzed: {len(case_metadata)}\n")
-
-    # # ===== Factor emphasis summary =====
-    # print("=== New York Equitable Distribution Factor Emphasis ===\n")
-
-    # for factor, freq in sorted(factor_frequencies.items(), key=lambda x: -x[1]):
-    #     if freq >= 0.6:
-    #         label = "Frequently emphasized"
-    #     elif freq >= 0.3:
-    #         label = "Sometimes emphasized"
-    #     else:
-    #         label = "Rarely emphasized"
-
-    #     print(f"{label}: {factor} ({freq:.0%} of cases)")
+    
 
 
     print("\n=== Equitable Distribution Analysis Summary ===\n")

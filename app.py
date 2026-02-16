@@ -328,6 +328,52 @@ elif page == "How the System Was Evaluated":
 
     st.dataframe(per_case_results)
 
+    # =============================
+    # Judge Analytics
+    # =============================
+
+    st.subheader("Judge-Level Decision Patterns")
+
+    judge_factor_counter = defaultdict(Counter)
+    judge_confidence_counter = defaultdict(Counter)
+    judge_case_count = Counter()
+
+    for rec in eval_records:
+        judge = rec.get("metadata", {}).get("JUDGE", "Unknown")
+        factors = rec.get("most_weighted", [])
+        confidence = rec.get("confidence", "unknown")
+
+        judge_case_count[judge] += 1
+        judge_confidence_counter[judge][confidence] += 1
+
+        for f in factors:
+            judge_factor_counter[judge][f] += 1
+
+    for judge in sorted(judge_case_count.keys()):
+        st.markdown(f"### Judge: {judge}")
+
+        total_cases = judge_case_count[judge]
+        st.write(f"Cases analyzed: {total_cases}")
+
+        # ---- Dominant Factors ----
+        if judge_factor_counter[judge]:
+            st.write("Most influential factors:")
+            for factor, count in judge_factor_counter[judge].most_common():
+                freq = count / total_cases
+                readable = factor.replace("_", " ")
+                st.write(f"- {readable} ({freq:.0%} of cases)")
+        else:
+            st.write("No dominant factor detected.")
+
+        # ---- Confidence profile ----
+        st.write("Confidence profile:")
+        for conf, count in judge_confidence_counter[judge].items():
+            freq = count / total_cases
+            st.write(f"- {conf.capitalize()}: {freq:.0%}")
+
+        st.write("---")
+
+
     st.caption(
     "Note: The validation dashboard reflects performance on a fixed evaluation dataset. "
     "The Analyzer page processes only the files uploaded by the user."

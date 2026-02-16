@@ -1,0 +1,30 @@
+JURISDICTION: New York
+COURT: Court of Appeals
+YEAR: 1985
+JUDGE: Wachtler
+
+The primary issue presented is whether a professional medical license acquired by one spouse during the marriage constitutes marital property subject to equitable distribution under Domestic Relations Law § 236(B).
+
+The parties were married in 1971. During the marriage, the wife worked full time as a teacher and contributed financially to the household while the husband attended medical school. The wife also assumed primary responsibility for maintaining the home and supporting the husband’s educational pursuits. In 1980, the husband obtained his medical license and shortly thereafter commenced this divorce action.
+
+The wife contends that the husband’s medical license, and the enhanced earning capacity it represents, is marital property because it was acquired during the marriage through the joint efforts of both spouses. The husband argues that a professional license is personal to the holder and not subject to distribution.
+
+The trial court determined that the medical license was not marital property and therefore not distributable. The Appellate Division reversed, holding that the license constituted marital property to the extent it reflected enhanced earning capacity developed during the marriage through the contributions of both spouses.
+
+We affirm the Appellate Division.
+
+Domestic Relations Law § 236(B)(1)(c) defines marital property as all property acquired by either spouse during the marriage and before the execution of a separation agreement or commencement of a matrimonial action, regardless of the form in which title is held. The statute is broadly construed to recognize that marriage is an economic partnership.
+
+The evidence demonstrates that the wife made substantial direct and indirect contributions to the husband’s acquisition of his medical license. She provided financial support during his education, maintained the household, and sacrificed her own career opportunities. These contributions enabled the husband to complete medical school and obtain his license.
+
+The husband’s medical license represents a valuable property interest because it is the foundation of his enhanced earning capacity. While the license itself may not be transferable, its economic value—reflected in the increased ability to generate income—is a marital asset subject to equitable distribution.
+
+The statute specifically directs courts to consider the direct and indirect contributions of the non-titled spouse to the acquisition of marital property and to the career or career potential of the other spouse. Here, the wife’s contributions were substantial and essential to the husband’s professional development.
+
+We reject the argument that a professional license cannot be marital property merely because it lacks market transferability. Many forms of marital property are not freely transferable, yet they remain subject to equitable distribution.
+
+Equitable distribution does not require equal division but rather a fair allocation based on statutory factors, including the duration of the marriage, the contributions of each spouse, and the future financial circumstances of the parties.
+
+The record demonstrates that the wife’s efforts were a significant factor in the husband’s acquisition of his medical license and the resulting enhanced earning capacity. To deny her an equitable share would be inconsistent with the statutory framework recognizing marriage as a shared economic enterprise.
+
+Accordingly, the order of the Appellate Division should be affirmed, with costs.

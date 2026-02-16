@@ -52,6 +52,12 @@ def extract_factors(text: str) -> dict:
         "misconduct": "misconduct" in text or "fault" in text
     }
 
+def chunk_text(text, chunk_size=2500):
+    words = text.split()
+    for i in range(0, len(words), chunk_size):
+        yield " ".join(words[i:i + chunk_size])
+
+
 def extract_factors_llm(text: str) -> dict:
     """
     Uses an LLM to extract equitable-distribution factors from text.
@@ -77,22 +83,7 @@ def extract_factors_llm(text: str) -> dict:
 
 ]
 
-    # prompt = f"""
-    # You are a system that extracts structured data.
-
-    # Return ONLY valid JSON.
-    # Do not include explanations, comments, or markdown.
-
-    # The JSON must have exactly these keys:
-    # {schema}
-
-    # Each value must be true or false.
-
-    # Text:
-    # {text}
-
-    # JSON:
-    # """
+    
     prompt = f"""
     You are analyzing a judicial divorce opinion applying New York equitable distribution law.
 
@@ -149,27 +140,61 @@ def extract_factors_llm(text: str) -> dict:
 
 
 
-    response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[{"role": "user", "content": prompt}],
-    temperature=0,
-)
+#     response = client.chat.completions.create(
+#     model="gpt-4o-mini",
+#     messages=[{"role": "user", "content": prompt}],
+#     temperature=0,
+# )
+    chunks = list(chunk_text(text))
+
+    chunk_results = []
+
+    for chunk in chunks:
+        chunk_prompt = prompt.replace(text, chunk)
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": chunk_prompt}],
+            temperature=0,
+        )
+
+        content = response.choices[0].message.content.strip()
+
+        try:
+            parsed = json.loads(content)
+            chunk_results.append(parsed)
+        except:
+            continue
+
+    # ---- Aggregate chunk outputs ----
+    mentioned = {factor: False for factor in FACTOR_SCHEMA}
+    most_weighted = []
+    confidence_scores = []
+    explanation_text = ""
+
+    for r in chunk_results:
+        for f, v in r.get("mentioned", {}).items():
+            if v:
+                mentioned[f] = True
+
+        most_weighted.extend(r.get("most_weighted", []))
+        confidence_scores.append(r.get("confidence", "medium"))
+
+        if not explanation_text and r.get("explanation"):
+            explanation_text = r["explanation"]
+
+    most_weighted = list(set(most_weighted))
+
+    confidence = max(
+        confidence_scores,
+        key=lambda x: ["low", "medium", "high"].index(x)
+    ) if confidence_scores else "medium"
+
+
 
     content = response.choices[0].message.content
     print("RAW LLM OUTPUT:", content)
 
-    # try:
-    #     return json.loads(content)
-    # except json.JSONDecodeError:
-    #     return {key: False for key in schema}
-
-    # try:
-    #     parsed = json.loads(content)
-    # except json.JSONDecodeError:
-    #     return {
-    #         "mentioned": {factor: False for factor in FACTOR_SCHEMA},
-    #         "most_weighted": []
-    #     }
     clean = content.strip()
 
     
@@ -211,11 +236,12 @@ def extract_factors_llm(text: str) -> dict:
         confidence = "low"
 
     return {
-        "mentioned": mentioned,
-        "most_weighted": most_weighted,
-        "confidence": parsed.get("confidence", "medium"),
-        "explanation": parsed.get("explanation", "")
+    "mentioned": mentioned,
+    "most_weighted": most_weighted,
+    "confidence": confidence,
+    "explanation": explanation_text
     }
+
 
 
 
