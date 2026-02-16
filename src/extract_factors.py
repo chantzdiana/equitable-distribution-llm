@@ -134,7 +134,9 @@ def extract_factors_llm(text: str) -> dict:
         "FACTOR_2": true/false,
         ...
     }},
-    "most_weighted": ["FACTOR_NAME", ...]
+    "most_weighted": ["FACTOR_NAME", ...],
+    "confidence": "low/medium/high",
+    "explanation": "2-3 sentence plain-English explanation of why the court relied most heavily on these factors"
     }}
 
     Use ONLY these factors:
@@ -170,12 +172,7 @@ def extract_factors_llm(text: str) -> dict:
     #     }
     clean = content.strip()
 
-    # Remove markdown code fences if present
-    # if clean.startswith("```"):
-    #     clean = clean.split("```", 1)[1]
-    #     clean = clean.rsplit("```", 1)[0].strip()
-
-    # clean = content.strip()
+    
 
 # Remove markdown code fences (``` or ```json)
     if clean.startswith("```"):
@@ -216,7 +213,8 @@ def extract_factors_llm(text: str) -> dict:
     return {
         "mentioned": mentioned,
         "most_weighted": most_weighted,
-        "confidence": confidence
+        "confidence": parsed.get("confidence", "medium"),
+        "explanation": parsed.get("explanation", "")
     }
 
 

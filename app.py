@@ -43,7 +43,8 @@ if page == "Analyzer":
                     factors = extract_factors_llm(text)
                     st.write("Confidence:", factors["confidence"])
 
-                    
+                    st.write("Explanation:", factors.get("explanation", ""))
+
                     all_results.append(factors)
 
             
