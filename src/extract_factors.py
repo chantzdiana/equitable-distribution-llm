@@ -110,12 +110,18 @@ def extract_factors_llm(text: str) -> dict:
 
     Steps:
 
-    1. Identify which statutory factors are meaningfully discussed.
-    2. Identify ONLY the factor(s) that appear MOST DECISIVE in the court’s reasoning.
-    3. If no factor is clearly decisive, return an empty list for "most_weighted".
+    1. Identify which statutory factors are meaningfully discussed. 
+    2. Rank the TOP THREE most important factors in order of importance.
+    3. The FIRST factor must be the most decisive driver of the court’s reasoning.
     4. Do NOT guess.
     5. Do NOT infer from background facts alone.
     6. Focus ONLY on judicial reasoning language.
+
+    Rules:
+    - Always return at least ONE factor
+    - Return AT MOST three
+    - Order matters: first = most decisive
+    - Do NOT guess
 
     Return ONLY valid JSON in this format:
 
@@ -140,11 +146,7 @@ def extract_factors_llm(text: str) -> dict:
 
 
 
-#     response = client.chat.completions.create(
-#     model="gpt-4o-mini",
-#     messages=[{"role": "user", "content": prompt}],
-#     temperature=0,
-# )
+
     chunks = list(chunk_text(text))
 
     chunk_results = []
@@ -156,6 +158,8 @@ def extract_factors_llm(text: str) -> dict:
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": chunk_prompt}],
             temperature=0,
+            top_p=1,
+
         )
 
         content = response.choices[0].message.content.strip()
@@ -183,7 +187,14 @@ def extract_factors_llm(text: str) -> dict:
         if not explanation_text and r.get("explanation"):
             explanation_text = r["explanation"]
 
-    most_weighted = list(set(most_weighted))
+    seen = set()
+    ordered = []
+    for f in most_weighted:
+        if f not in seen:
+            ordered.append(f)
+            seen.add(f)
+    most_weighted = ordered
+
 
     confidence = max(
         confidence_scores,
@@ -192,29 +203,7 @@ def extract_factors_llm(text: str) -> dict:
 
 
 
-    content = response.choices[0].message.content
-    print("RAW LLM OUTPUT:", content)
 
-    clean = content.strip()
-
-    
-
-# Remove markdown code fences (``` or ```json)
-    if clean.startswith("```"):
-        clean = clean.split("```", 1)[1]        # remove first ```
-        clean = clean.lstrip("json").strip()    # remove optional 'json'
-        if "```" in clean:
-            clean = clean.rsplit("```", 1)[0]   # remove closing ```
-        clean = clean.strip()
-
-
-    try:
-        parsed = json.loads(clean)
-    except json.JSONDecodeError:
-        return {
-            "mentioned": {factor: False for factor in FACTOR_SCHEMA},
-            "most_weighted": []
-        }
 
 
     # Safety normalization
@@ -225,15 +214,7 @@ def extract_factors_llm(text: str) -> dict:
     for factor in FACTOR_SCHEMA:
         mentioned.setdefault(factor, False)
 
-    # ---- Confidence scoring ----
-    num_weighted = len(most_weighted)
-
-    if num_weighted == 1:
-        confidence = "high"
-    elif num_weighted == 2:
-        confidence = "medium"
-    else:
-        confidence = "low"
+   
 
     return {
     "mentioned": mentioned,

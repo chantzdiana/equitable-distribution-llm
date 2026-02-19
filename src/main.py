@@ -57,7 +57,9 @@ if __name__ == "__main__":
                 "metadata": metadata,
                 "most_weighted": factors["most_weighted"],
                 "confidence": factors["confidence"],
-                "mentioned": factors["mentioned"]
+                "mentioned": factors["mentioned"],
+                "explanation": factors["explanation"],
+    
             }
 
             f.write(json.dumps(eval_record) + "\n")
@@ -182,7 +184,7 @@ if __name__ == "__main__":
             human = human_labels[filename]
             model = result["most_weighted"]
 
-            is_correct = human in model
+            is_correct = (len(model) > 0 and model[0] == human)
 
             if is_correct:
                 correct += 1
