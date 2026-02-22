@@ -48,8 +48,32 @@ if __name__ == "__main__":
             metadata["FILE"] = filename
             case_metadata.append(metadata)
 
-            factors = extract_factors_llm(text)
+            RUNS_PER_CASE = 2   # you can change to 3–7 later
+
+            run_outputs = []
+
+            for _ in range(RUNS_PER_CASE):
+                out = extract_factors_llm(text)
+                run_outputs.append(out)
+
+            # Use first run for normal pipeline
+            factors = run_outputs[0]
             all_results.append(factors)
+
+            # -------------------------
+            # Stability computation
+            # -------------------------
+            top1_predictions = []
+
+            for r in run_outputs:
+                if r["most_weighted"]:
+                    top1_predictions.append(r["most_weighted"][0])
+                else:
+                    top1_predictions.append("NONE")
+
+            # Most common top factor
+            most_common = Counter(top1_predictions).most_common(1)[0]
+            stability_score = most_common[1] / RUNS_PER_CASE
 
             # ---- Evaluation logging ----
             eval_record = {
@@ -58,6 +82,7 @@ if __name__ == "__main__":
                 "most_weighted": factors["most_weighted"],
                 "confidence": factors["confidence"],
                 "mentioned": factors["mentioned"],
+                "stability": stability_score,
                 "explanation": factors["explanation"],
                 "top_factor": factors["most_weighted"][0] if factors["most_weighted"] else None
     
