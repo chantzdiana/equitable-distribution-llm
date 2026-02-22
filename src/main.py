@@ -59,6 +59,7 @@ if __name__ == "__main__":
                 "confidence": factors["confidence"],
                 "mentioned": factors["mentioned"],
                 "explanation": factors["explanation"],
+                "top_factor": factors["most_weighted"][0] if factors["most_weighted"] else None
     
             }
 
@@ -172,7 +173,8 @@ if __name__ == "__main__":
         for row in reader:
             human_labels[row["file"]] = row["correct_factor"]
 
-    correct = 0
+    correct_top1 = 0
+    correct_top3 = 0
     total = 0
 
     for metadata, result in zip(case_metadata, all_results):
@@ -184,20 +186,26 @@ if __name__ == "__main__":
             human = human_labels[filename]
             model = result["most_weighted"]
 
-            is_correct = (len(model) > 0 and model[0] == human)
+            top1_correct = (len(model) > 0 and model[0] == human)
+            top3_correct = (human in model)
 
-            if is_correct:
-                correct += 1
+            if top1_correct:
+                correct_top1 += 1
+            if top3_correct:
+                correct_top3 += 1
 
             # ---- PER CASE REPORT ----
             print(f"Case: {filename}")
             print(f"  Model dominant factor(s): {model}")
             print(f"  Human correct factor: {human}")
-            print(f"  Result: {'CORRECT' if is_correct else 'WRONG'}\n")
-
+            print(f"  Result: {'TOP1 CORRECT' if top1_correct else 'WRONG'}\n")
+            print(f"  Result: {'Top3 CORRECT' if top3_correct else 'WRONG'}\n")
 
     if total > 0:
-        accuracy = correct / total
-        print(f"Accuracy: {accuracy:.0%} ({correct}/{total} correct)")
+        top1_acc = correct_top1 / total
+        top3_acc = correct_top3 / total
+
+        print(f"Top-1 Accuracy: {top1_acc:.0%} ({correct_top1}/{total})")
+        print(f"Top-3 Accuracy: {top3_acc:.0%} ({correct_top3}/{total})")
     else:
         print("No labeled cases found.")
