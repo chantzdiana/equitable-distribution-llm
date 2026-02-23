@@ -358,6 +358,42 @@ elif page == "How the System Was Evaluated":
 
     st.dataframe(table_rows)
 
+
+
+
+    st.subheader("Reliability vs Confidence")
+
+    from collections import defaultdict
+
+    confidence_correct = defaultdict(int)
+    confidence_total = defaultdict(int)
+
+    for rec in eval_records:
+        file = rec["file"]
+        conf = rec.get("confidence", "unknown")
+
+        if file in human_labels:
+            human = human_labels[file]
+            model_top = rec.get("top_factor")
+
+            confidence_total[conf] += 1
+
+            if model_top == human:
+                confidence_correct[conf] += 1
+
+    # Display calibration
+    for conf in sorted(confidence_total.keys()):
+        total = confidence_total[conf]
+        correct = confidence_correct[conf]
+
+        if total > 0:
+            acc = correct / total
+            st.write(
+                f"{conf.capitalize()} confidence — Accuracy: {acc:.0%} "
+                f"({correct}/{total} correct)"
+            )
+
+
     # =============================
     # Judge Analytics
     # =============================
