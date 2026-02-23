@@ -226,6 +226,8 @@ if __name__ == "__main__":
             print(f"  Result: {'TOP1 CORRECT' if top1_correct else 'WRONG'}\n")
             print(f"  Result: {'Top3 CORRECT' if top3_correct else 'WRONG'}\n")
 
+
+
     if total > 0:
         top1_acc = correct_top1 / total
         top3_acc = correct_top3 / total
@@ -234,3 +236,59 @@ if __name__ == "__main__":
         print(f"Top-3 Accuracy: {top3_acc:.0%} ({correct_top3}/{total})")
     else:
         print("No labeled cases found.")
+
+    print("\n=== Per-Factor Accuracy ===\n")
+
+    factor_correct = Counter()
+    factor_total = Counter()
+
+    for metadata, result in zip(case_metadata, all_results):
+        filename = metadata.get("FILE")
+
+        if filename in human_labels:
+            human = human_labels[filename]
+            model = result["most_weighted"]
+
+            factor_total[human] += 1
+
+            if len(model) > 0 and model[0] == human:
+                factor_correct[human] += 1
+
+    for factor in factor_total:
+        acc = factor_correct[factor] / factor_total[factor]
+        readable = factor.replace("_", " ")
+        print(f"{readable}: {acc:.0%} ({factor_correct[factor]}/{factor_total[factor]})")
+    
+    print("\n=== Stability Summary ===\n")
+
+    stability_scores = []
+
+    with open("data/eval/eval_log.jsonl") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            rec = json.loads(line)
+            stability_scores.append(rec.get("stability", 0))
+
+    if stability_scores:
+        avg_stability = sum(stability_scores) / len(stability_scores)
+        print(f"Average Stability: {avg_stability:.2f}")
+
+        print(f"Perfectly Stable Cases: {sum(1 for s in stability_scores if s == 1.0)}/{len(stability_scores)}")    
+    
+    
+    print("\n=== Confidence Distribution ===\n")
+
+    conf_counter = Counter()
+
+    with open("data/eval/eval_log.jsonl") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            rec = json.loads(line)
+            conf_counter[rec.get("confidence", "unknown")] += 1
+
+    for k, v in conf_counter.items():
+        print(f"{k}: {v} cases")
