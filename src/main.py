@@ -47,6 +47,23 @@ def add_noise(text):
 
     return text
 
+def truncate_text(text, mode="first_half"):
+    words = text.split()
+    half = len(words) // 2
+
+    if mode == "first_half":
+        return " ".join(words[:half])
+
+    elif mode == "second_half":
+        return " ".join(words[half:])
+
+    elif mode == "middle":
+        quarter = len(words) // 4
+        return " ".join(words[quarter:quarter * 3])
+
+    else:
+        return text
+
 
 if __name__ == "__main__":
     cases = load_cases_from_folder("data/raw/ny_real_snippets") + load_cases_from_folder("data/raw/long_cases")
@@ -76,6 +93,30 @@ if __name__ == "__main__":
 
             # Use first run for normal pipeline
             factors = run_outputs[0]
+
+            # -------------------------
+            # Truncation Robustness Test
+            # -------------------------
+            full_top1 = factors["most_weighted"][0] if factors["most_weighted"] else None
+
+            trunc_modes = ["first_half", "second_half", "middle"]
+            trunc_matches = 0
+
+            for mode in trunc_modes:
+                truncated_text = truncate_text(text, mode)
+                trunc_result = extract_factors_llm(truncated_text)
+
+                trunc_top1 = (
+                    trunc_result["most_weighted"][0]
+                    if trunc_result["most_weighted"]
+                    else None
+                )
+
+                if trunc_top1 == full_top1:
+                    trunc_matches += 1
+
+            truncation_score = trunc_matches / len(trunc_modes)
+
             all_results.append(factors)
             
             # -------------------------
@@ -115,8 +156,10 @@ if __name__ == "__main__":
                 "confidence": factors["confidence"],
                 "mentioned": factors["mentioned"],
                 "stability": stability_score,
+                "truncation_robustness": truncation_score,
                 "explanation": factors["explanation"],
                 "top_factor": factors["most_weighted"][0] if factors["most_weighted"] else None
+                
     
             }
 
@@ -324,3 +367,21 @@ if __name__ == "__main__":
 
     for k, v in conf_counter.items():
         print(f"{k}: {v} cases")
+    
+
+    print("\n=== Truncation Robustness Summary ===\n")
+
+    trunc_scores = []
+
+    with open("data/eval/eval_log.jsonl") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            rec = json.loads(line)
+            trunc_scores.append(rec.get("truncation_robustness", 0))
+
+    if trunc_scores:
+        avg_trunc = sum(trunc_scores) / len(trunc_scores)
+        print(f"Average Truncation Robustness: {avg_trunc:.2f}")
+        print(f"Perfectly Robust Cases: {sum(1 for s in trunc_scores if s == 1.0)}/{len(trunc_scores)}")
