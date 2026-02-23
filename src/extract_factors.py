@@ -203,12 +203,9 @@ def extract_factors_llm(text: str) -> dict:
 
 
 
-
-
-
-    # Safety normalization
-    mentioned = parsed.get("mentioned", {})
-    most_weighted = parsed.get("most_weighted", [])
+   # ---- Final normalization ----
+    for factor in FACTOR_SCHEMA:
+        mentioned.setdefault(factor, False)
 
     # Ensure all schema keys exist
     for factor in FACTOR_SCHEMA:

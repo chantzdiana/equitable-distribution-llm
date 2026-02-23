@@ -5,6 +5,8 @@ from collections import Counter, defaultdict
 #from extract_factors import extract_factors, extract_factors_llm
 from src.extract_factors import extract_factors_llm, extract_factors
 import csv
+import random
+import re
 
 
 def load_cases_from_folder(folder_path):
@@ -28,6 +30,22 @@ def extract_metadata(text):
         else:
             break
     return metadata
+
+
+
+
+def add_noise(text):
+    # Remove punctuation
+    text = re.sub(r"[^\w\s]", "", text)
+
+    # Randomly drop 10% of sentences
+    sentences = text.split(".")
+    sentences = [s for s in sentences if random.random() > 0.1]
+
+    # Lowercase everything
+    text = ". ".join(sentences).lower()
+
+    return text
 
 
 if __name__ == "__main__":
@@ -59,6 +77,20 @@ if __name__ == "__main__":
             # Use first run for normal pipeline
             factors = run_outputs[0]
             all_results.append(factors)
+            
+            # -------------------------
+            # Noise Robustness Test (single-case demo)
+            # -------------------------
+            if filename == "ny_obrien_full.txt":
+                noisy_text = add_noise(text)
+                noisy_result = extract_factors_llm(noisy_text)
+
+                print("\n--- Noise Robustness Test ---")
+                print("Original Top-1:",
+                      factors["most_weighted"][0] if factors["most_weighted"] else None)
+
+                print("Noisy Top-1:",
+                      noisy_result["most_weighted"][0] if noisy_result["most_weighted"] else None)
 
             # -------------------------
             # Stability computation
