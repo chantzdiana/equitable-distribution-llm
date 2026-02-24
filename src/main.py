@@ -7,6 +7,7 @@ from src.extract_factors import extract_factors_llm, extract_factors
 import csv
 import random
 import re
+from src.vectorize import build_factor_vector
 
 
 def load_cases_from_folder(folder_path):
@@ -66,7 +67,7 @@ def truncate_text(text, mode="first_half"):
 
 
 if __name__ == "__main__":
-    cases = load_cases_from_folder("data/raw/ny_real_snippets") + load_cases_from_folder("data/raw/long_cases")
+    cases = load_cases_from_folder("data/raw/eval_cases") 
 
     all_results = []
     case_metadata = []
@@ -82,17 +83,23 @@ if __name__ == "__main__":
             metadata = extract_metadata(text)
             metadata["FILE"] = filename
             case_metadata.append(metadata)
+            
 
-            RUNS_PER_CASE = 2   # you can change to 3–7 later
-
+            RUNS_PER_CASE = 1
             run_outputs = []
 
             for _ in range(RUNS_PER_CASE):
                 out = extract_factors_llm(text)
                 run_outputs.append(out)
 
-            # Use first run for normal pipeline
+            # Use first run
             factors = run_outputs[0]
+
+            # Build factor vector
+            vector = build_factor_vector(
+                factors["mentioned"],
+                factors["most_weighted"]
+            )
 
             # -------------------------
             # Truncation Robustness Test
@@ -118,6 +125,70 @@ if __name__ == "__main__":
             truncation_score = trunc_matches / len(trunc_modes)
 
             all_results.append(factors)
+
+            # -------------------------
+            # Stability computation
+            # -------------------------
+            top1_predictions = []
+
+            for r in run_outputs:
+                if r["most_weighted"]:
+                    top1_predictions.append(r["most_weighted"][0])
+                else:
+                    top1_predictions.append("NONE")
+
+            print(f"Run-level Top1s for {filename}: {top1_predictions}")
+
+            if RUNS_PER_CASE == 1:
+                stability_score = 1.0
+            else:
+                most_common = Counter(top1_predictions).most_common(1)[0]
+                stability_score = most_common[1] / RUNS_PER_CASE
+            # RUNS_PER_CASE = 1
+            # run_outputs = []
+
+            # for _ in range(RUNS_PER_CASE):
+            #     out = extract_factors_llm(text)
+            #     run_outputs.append(out)
+
+            # # Use first run
+            # factors = run_outputs[0]
+
+            # # Build factor vector AFTER factors exists
+            # vector = build_factor_vector(
+            #     factors["mentioned"],
+            #     factors["most_weighted"]
+            # )
+
+            
+
+            # Use first run for normal pipeline
+            # factors = run_outputs[0]
+
+            # -------------------------
+            # Truncation Robustness Test
+            # -------------------------
+            # full_top1 = factors["most_weighted"][0] if factors["most_weighted"] else None
+
+            # trunc_modes = ["first_half", "second_half", "middle"]
+            # trunc_matches = 0
+
+            # for mode in trunc_modes:
+            #     truncated_text = truncate_text(text, mode)
+            #     trunc_result = extract_factors_llm(truncated_text)
+
+            #     trunc_top1 = (
+            #         trunc_result["most_weighted"][0]
+            #         if trunc_result["most_weighted"]
+            #         else None
+            #     )
+
+            #     if trunc_top1 == full_top1:
+            #         trunc_matches += 1
+
+            # truncation_score = trunc_matches / len(trunc_modes)
+
+            # all_results.append(factors)
             
             # -------------------------
             # Noise Robustness Test (single-case demo)
@@ -136,17 +207,22 @@ if __name__ == "__main__":
             # -------------------------
             # Stability computation
             # -------------------------
-            top1_predictions = []
+            # top1_predictions = []
+            
 
-            for r in run_outputs:
-                if r["most_weighted"]:
-                    top1_predictions.append(r["most_weighted"][0])
-                else:
-                    top1_predictions.append("NONE")
+            # for r in run_outputs:
+            #     if r["most_weighted"]:
+            #         top1_predictions.append(r["most_weighted"][0])
+            #     else:
+            #         top1_predictions.append("NONE")
+            # print(f"Run-level Top1s for {filename}: {top1_predictions}")
 
-            # Most common top factor
-            most_common = Counter(top1_predictions).most_common(1)[0]
-            stability_score = most_common[1] / RUNS_PER_CASE
+            # # Most common top factor
+            # if RUNS_PER_CASE == 1:
+            #     stability_score = 1.0
+            # else:
+            #     most_common = Counter(top1_predictions).most_common(1)[0]
+            #     stability_score = most_common[1] / RUNS_PER_CASE
 
             # ---- Evaluation logging ----
             eval_record = {
@@ -157,6 +233,7 @@ if __name__ == "__main__":
                 "mentioned": factors["mentioned"],
                 "stability": stability_score,
                 "truncation_robustness": truncation_score,
+                "factor_vector": vector,
                 "explanation": factors["explanation"],
                 "top_factor": factors["most_weighted"][0] if factors["most_weighted"] else None
                 
@@ -368,8 +445,33 @@ if __name__ == "__main__":
     for k, v in conf_counter.items():
         print(f"{k}: {v} cases")
     
+    print("\n=== Similar Case Test ===\n")
 
-    print("\n=== Truncation Robustness Summary ===\n")
+    from src.similarity import find_most_similar_cases
+    from src.vectorize import build_factor_vector
+
+    # Use the LAST analyzed case as the query
+    if all_results:
+        last_result = all_results[-1]
+        query_vector = build_factor_vector(
+            last_result["mentioned"],
+            last_result["most_weighted"]
+        )
+        # --- DEBUG PRINT ---
+        print("\nDEBUG — Query Case:", case_metadata[-1]["FILE"])
+        print("DEBUG — Query Vector:", query_vector)
+
+        similar_cases = find_most_similar_cases(query_vector, top_k=8)
+
+        for s in similar_cases:
+            print(f"Case: {s['file']}")
+            print(f"  Similarity: {s['score']:.2f}")
+            print(f"  Judge: {s['judge']}")
+            print(f"  Top Factor: {s['top_factor']}\n")
+            print(f"  (Vector stored in eval_log for this case)")
+        
+
+        print("\n=== Truncation Robustness Summary ===\n")
 
     trunc_scores = []
 

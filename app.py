@@ -36,18 +36,39 @@ if page == "Analyzer":
 
             with st.spinner("Analyzing cases..."):
                 for file in uploaded_files:
+                    filename = file.name   # <-- get case name
+
                     text = file.read().decode("utf-8")
                     metadata = extract_metadata(text)
                     case_metadata.append(metadata)
 
                     factors = extract_factors_llm(text)
-                    st.write("Confidence:", factors["confidence"])
 
-                    st.write("Explanation:", factors.get("explanation", ""))
+                    # ---- CASE HEADER ----
+                    st.markdown(f"### Case: {filename}")
 
-                    all_results.append(factors)
+                    # Optional: show metadata if present
+                    if metadata:
+                        meta_parts = []
+                        if "COURT" in metadata:
+                            meta_parts.append(metadata["COURT"])
+                        if "YEAR" in metadata:
+                            meta_parts.append(metadata["YEAR"])
+                        if "JUDGE" in metadata:
+                            meta_parts.append(f"Judge {metadata['JUDGE']}")
+
+                        if meta_parts:
+                            st.caption(" • ".join(meta_parts))
+
+                    # ---- MODEL OUTPUT ----
+                    st.write("**Confidence:**", factors["confidence"])
+                    st.write("**Explanation:**", factors["explanation"])
+
+                    st.divider()   # visual separator between cases
 
             
+                #
+
             counter = Counter()
             for result in all_results:
                 for factor in result["most_weighted"]:
