@@ -473,17 +473,36 @@ if __name__ == "__main__":
 
         print("\n=== Truncation Robustness Summary ===\n")
 
-    trunc_scores = []
+        trunc_scores = []
 
-    with open("data/eval/eval_log.jsonl") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            rec = json.loads(line)
-            trunc_scores.append(rec.get("truncation_robustness", 0))
+        with open("data/eval/eval_log.jsonl") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                rec = json.loads(line)
+                trunc_scores.append(rec.get("truncation_robustness", 0))
 
-    if trunc_scores:
-        avg_trunc = sum(trunc_scores) / len(trunc_scores)
-        print(f"Average Truncation Robustness: {avg_trunc:.2f}")
-        print(f"Perfectly Robust Cases: {sum(1 for s in trunc_scores if s == 1.0)}/{len(trunc_scores)}")
+        if trunc_scores:
+            avg_trunc = sum(trunc_scores) / len(trunc_scores)
+            print(f"Average Truncation Robustness: {avg_trunc:.2f}")
+            print(f"Perfectly Robust Cases: {sum(1 for s in trunc_scores if s == 1.0)}/{len(trunc_scores)}")
+
+
+        print("\n=== User Case Simulation ===\n")
+
+        from src.user_similarity import analyze_user_case
+
+        sample_text = """
+        The wife supported the husband through medical school.
+        The court emphasized her contributions to his career
+        as the primary factor in distributing marital property.
+        """
+
+        user_result = analyze_user_case(sample_text)
+
+        print("User Most Weighted:", user_result["analysis"]["most_weighted"])
+        print("\nMost Similar Cases:")
+
+        for case in user_result["similar_cases"]:
+            print(case)

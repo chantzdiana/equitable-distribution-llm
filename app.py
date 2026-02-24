@@ -8,7 +8,7 @@ from collections import defaultdict
 
 page = st.sidebar.radio(
     "Navigation",
-    ["Analyzer", "How the System Was Evaluated", "Evaluation Log"]
+    ["Analyzer", "How the System Was Evaluated", "Evaluation Log", "Case Similarity"]
 )
 
 if page == "Analyzer":
@@ -548,4 +548,58 @@ elif page == "Evaluation Log":
         })
 
     st.dataframe(table, use_container_width=True)
+
+
+
+elif page == "Case Similarity":
+    st.title("Case Similarity Engine")
+
+    st.markdown(
+        "Paste a case description or facts below. The system will identify "
+        "the most similar judicial decisions based on legal reasoning patterns."
+    )
+
+    user_text = st.text_area("Enter case facts or summary:", height=200)
+
+    if st.button("Find Similar Cases") and user_text.strip():
+
+        from src.extract_factors import extract_factors_llm
+        from src.vectorize import build_factor_vector
+        from src.similarity import find_most_similar_cases
+
+        # --- Analyze user case ---
+        result = extract_factors_llm(user_text)
+
+        st.subheader("Detected Legal Reasoning")
+
+        if result["most_weighted"]:
+            st.write("Most Weighted Factors:")
+            for f in result["most_weighted"]:
+                st.markdown(f"- {f.replace('_', ' ')}")
+        else:
+            st.write("Most Weighted Factors: None detected")   
+       
+        st.write("Confidence:", result["confidence"])
+        st.write("Explanation:", result["explanation"])
+
+        # --- Build vector ---
+        query_vector = build_factor_vector(
+            result["mentioned"],
+            result["most_weighted"]
+        )
+
+        # --- Find similar cases ---
+        similar_cases = find_most_similar_cases(query_vector, top_k=5)
+
+        st.subheader("Most Similar Judicial Decisions")
+
+        for s in similar_cases:
+            st.markdown(
+                f"""
+                **Case:** {s['file']}  
+                **Judge:** {s['judge']}  
+                **Similarity:** {s['score']:.2f}  
+                **Dominant Factor:** {s['top_factor']}
+                """
+            )
 
