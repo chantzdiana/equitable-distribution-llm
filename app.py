@@ -6,10 +6,18 @@ from collections import Counter, defaultdict
 from src.extract_factors import extract_factors_llm, FACTOR_SCHEMA
 from src.main import extract_metadata
 
+# Initialize session state for page navigation
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "Home"
+
 page = st.sidebar.radio(
     "Navigation",
-    ["Home", "Analyzer", "How the System Was Evaluated", "Evaluation Log", "Case Similarity"]
+    ["Home", "Analyzer", "How the System Was Evaluated", "Evaluation Log", "Case Similarity"],
+    index=["Home", "Analyzer", "How the System Was Evaluated", "Evaluation Log", "Case Similarity"].index(st.session_state.current_page)
 )
+
+# Update session state with selected page
+st.session_state.current_page = page
 
 if page == "Home":
     st.set_page_config(page_title="Equitable Distribution LLM Analyzer")
@@ -39,7 +47,7 @@ if page == "Home":
         factors the courts emphasize. Get factor analysis and judge-level insights.
         """)
         if st.button("🔍 Go to Analyzer", use_container_width=True, key="btn_analyzer"):
-            st.session_state.page = "Analyzer"
+            st.session_state.current_page = "Analyzer"
             st.rerun()
     
     with col2:
@@ -49,7 +57,7 @@ if page == "Home":
         and robustness tests performed on real judicial opinions.
         """)
         if st.button("📈 View Dashboard", use_container_width=True, key="btn_validation"):
-            st.session_state.page = "How the System Was Evaluated"
+            st.session_state.current_page = "How the System Was Evaluated"
             st.rerun()
     
     col1, col2 = st.columns(2)
@@ -61,7 +69,7 @@ if page == "Home":
         confidence levels, and robustness scores with two display modes.
         """)
         if st.button("📝 View Log", use_container_width=True, key="btn_log"):
-            st.session_state.page = "Evaluation Log"
+            st.session_state.current_page = "Evaluation Log"
             st.rerun()
     
     with col2:
@@ -71,7 +79,7 @@ if page == "Home":
         how courts weigh factors in comparable situations.
         """)
         if st.button("🔎 Find Cases", use_container_width=True, key="btn_similarity"):
-            st.session_state.page = "Case Similarity"
+            st.session_state.current_page = "Case Similarity"
             st.rerun()
     
     st.markdown("---")
@@ -260,20 +268,29 @@ elif page == "How the System Was Evaluated":
         pass
 
     if latest_results:
-        # Display key metrics
-        col1, col2, col3, col4 = st.columns(4)
+        # Display accuracy metrics row 1
+        st.write("**Accuracy Metrics**")
+        col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Top-1 Accuracy", f"{latest_results['top_1_accuracy']:.0%}")
         with col2:
-            st.metric("Test Cases", latest_results['dataset_size'])
+            st.metric("Top-3 Accuracy", f"{latest_results['top_3_accuracy']:.0%}")
         with col3:
+            st.metric("Test Cases", latest_results['dataset_size'])
+
+        # Display robustness metrics row 2
+        st.write("**Robustness Metrics**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
             st.metric("Avg Stability", f"{latest_results['avg_stability']:.2f}")
-        with col4:
+        with col2:
             st.metric("Truncation Robustness", f"{latest_results['avg_truncation_robustness']:.2f}")
+        with col3:
+            st.metric("Noise Robustness", f"{latest_results['avg_noise_robustness']:.2f}")
 
         # Per-factor accuracy
+        st.write("**Per-Factor Accuracy**")
         if latest_results['per_factor_accuracy']:
-            st.write("**Per-Factor Accuracy:**")
             factor_data = []
             for factor, acc in latest_results['per_factor_accuracy'].items():
                 readable = factor.replace("_", " ").title()

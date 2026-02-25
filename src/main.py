@@ -147,38 +147,18 @@ if __name__ == "__main__":
             
             
             # -------------------------
-            # Noise Robustness Test (single-case demo)
+            # Noise Robustness Test (all cases)
             # -------------------------
-            if filename == "ny_obrien_full.txt":
-                noisy_text = add_noise(text)
-                noisy_result = extract_factors_llm(noisy_text)
+            noisy_text = add_noise(text)
+            noisy_result = extract_factors_llm(noisy_text)
 
-                print("\n--- Noise Robustness Test ---")
-                print("Original Top-1:",
-                      factors["most_weighted"][0] if factors["most_weighted"] else None)
+            noise_top1 = (
+                noisy_result["most_weighted"][0]
+                if noisy_result["most_weighted"]
+                else None
+            )
 
-                print("Noisy Top-1:",
-                      noisy_result["most_weighted"][0] if noisy_result["most_weighted"] else None)
-
-            # -------------------------
-            # Stability computation
-            # -------------------------
-            # top1_predictions = []
-            
-
-            # for r in run_outputs:
-            #     if r["most_weighted"]:
-            #         top1_predictions.append(r["most_weighted"][0])
-            #     else:
-            #         top1_predictions.append("NONE")
-            # print(f"Run-level Top1s for {filename}: {top1_predictions}")
-
-            # # Most common top factor
-            # if RUNS_PER_CASE == 1:
-            #     stability_score = 1.0
-            # else:
-            #     most_common = Counter(top1_predictions).most_common(1)[0]
-            #     stability_score = most_common[1] / RUNS_PER_CASE
+            noise_score = 1.0 if noise_top1 == full_top1 else 0.0
 
             # ---- Evaluation logging ----
             eval_record = {
@@ -189,6 +169,7 @@ if __name__ == "__main__":
                 "mentioned": factors["mentioned"],
                 "stability": stability_score,
                 "truncation_robustness": truncation_score,
+                "noise_robustness": noise_score,
                 "factor_vector": vector,
                 "explanation": factors["explanation"],
                 "top_factor": factors["most_weighted"][0] if factors["most_weighted"] else None
@@ -444,6 +425,22 @@ if __name__ == "__main__":
             print(f"Average Truncation Robustness: {avg_trunc:.2f}")
             print(f"Perfectly Robust Cases: {sum(1 for s in trunc_scores if s == 1.0)}/{len(trunc_scores)}")
 
+        print("\n=== Noise Robustness Summary ===\n")
+
+        noise_scores = []
+
+        with open("data/eval/eval_log.jsonl") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                rec = json.loads(line)
+                noise_scores.append(rec.get("noise_robustness", 0))
+
+        if noise_scores:
+            avg_noise = sum(noise_scores) / len(noise_scores)
+            print(f"Average Noise Robustness: {avg_noise:.2f}")
+            print(f"Robust to Noise Cases: {sum(1 for s in noise_scores if s == 1.0)}/{len(noise_scores)}")
 
         print("\n=== User Case Simulation ===\n")
 
@@ -477,8 +474,10 @@ if __name__ == "__main__":
         "top_3_accuracy": correct_top3 / total if total > 0 else 0,
         "avg_stability": sum(stability_scores) / len(stability_scores) if stability_scores else 0,
         "avg_truncation_robustness": sum(trunc_scores) / len(trunc_scores) if trunc_scores else 0,
+        "avg_noise_robustness": sum(noise_scores) / len(noise_scores) if noise_scores else 0,
         "perfectly_stable_cases": sum(1 for s in stability_scores if s == 1.0),
         "perfectly_robust_cases": sum(1 for s in trunc_scores if s == 1.0),
+        "noise_robust_cases": sum(1 for s in noise_scores if s == 1.0),
         "per_factor_accuracy": {
             factor: factor_correct[factor] / factor_total[factor]
             for factor in factor_total
