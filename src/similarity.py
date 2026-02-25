@@ -30,7 +30,8 @@ def find_most_similar_cases(query_vector, top_k=8, path="data/eval/eval_log.json
                 "file": rec["file"],
                 "judge": rec["metadata"].get("JUDGE", "Unknown"),
                 "score": score,
-                "top_factor": rec.get("top_factor")
+                "top_factor": rec.get("top_factor"),
+                "most_weighted": rec.get("most_weighted", [])
             })
 
     results.sort(key=lambda x: x["score"], reverse=True)

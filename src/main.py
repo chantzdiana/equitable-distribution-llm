@@ -89,7 +89,7 @@ if __name__ == "__main__":
             run_outputs = []
 
             for _ in range(RUNS_PER_CASE):
-                out = extract_factors_llm(text)
+                out = extract_factors_llm(text, use_cache=False)
                 run_outputs.append(out)
 
             # Use first run
@@ -144,51 +144,7 @@ if __name__ == "__main__":
             else:
                 most_common = Counter(top1_predictions).most_common(1)[0]
                 stability_score = most_common[1] / RUNS_PER_CASE
-            # RUNS_PER_CASE = 1
-            # run_outputs = []
-
-            # for _ in range(RUNS_PER_CASE):
-            #     out = extract_factors_llm(text)
-            #     run_outputs.append(out)
-
-            # # Use first run
-            # factors = run_outputs[0]
-
-            # # Build factor vector AFTER factors exists
-            # vector = build_factor_vector(
-            #     factors["mentioned"],
-            #     factors["most_weighted"]
-            # )
-
             
-
-            # Use first run for normal pipeline
-            # factors = run_outputs[0]
-
-            # -------------------------
-            # Truncation Robustness Test
-            # -------------------------
-            # full_top1 = factors["most_weighted"][0] if factors["most_weighted"] else None
-
-            # trunc_modes = ["first_half", "second_half", "middle"]
-            # trunc_matches = 0
-
-            # for mode in trunc_modes:
-            #     truncated_text = truncate_text(text, mode)
-            #     trunc_result = extract_factors_llm(truncated_text)
-
-            #     trunc_top1 = (
-            #         trunc_result["most_weighted"][0]
-            #         if trunc_result["most_weighted"]
-            #         else None
-            #     )
-
-            #     if trunc_top1 == full_top1:
-            #         trunc_matches += 1
-
-            # truncation_score = trunc_matches / len(trunc_modes)
-
-            # all_results.append(factors)
             
             # -------------------------
             # Noise Robustness Test (single-case demo)
@@ -506,3 +462,34 @@ if __name__ == "__main__":
 
         for case in user_result["similar_cases"]:
             print(case)
+
+    
+    # ============================
+    # SAVE RESULTS SUMMARY
+    # ============================
+    from datetime import datetime
+    import os
+
+    results_summary = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "dataset_size": total,
+        "top_1_accuracy": correct_top1 / total if total > 0 else 0,
+        "top_3_accuracy": correct_top3 / total if total > 0 else 0,
+        "avg_stability": sum(stability_scores) / len(stability_scores) if stability_scores else 0,
+        "avg_truncation_robustness": sum(trunc_scores) / len(trunc_scores) if trunc_scores else 0,
+        "perfectly_stable_cases": sum(1 for s in stability_scores if s == 1.0),
+        "perfectly_robust_cases": sum(1 for s in trunc_scores if s == 1.0),
+        "per_factor_accuracy": {
+            factor: factor_correct[factor] / factor_total[factor]
+            for factor in factor_total
+        }
+    }
+
+    os.makedirs("data/eval", exist_ok=True)
+    
+    # Append to summary log
+    summary_log_path = "data/eval/results_summary.jsonl"
+    with open(summary_log_path, "a") as f:
+        f.write(json.dumps(results_summary) + "\n")
+    
+    print("\n✅ Results summary saved to data/eval/results_summary.jsonl")
