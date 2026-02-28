@@ -67,128 +67,111 @@ def truncate_text(text, mode="first_half"):
 
 
 if __name__ == "__main__":
-    cases = load_cases_from_folder("data/raw/eval_cases") 
+    cases = load_cases_from_folder("data/raw/eval_cases")
 
     all_results = []
     case_metadata = []
-
+    truncation_scores = []
+    noise_scores = []
+    # For aggregating runs per case
+    case_run_outputs = {}
     os.makedirs("data/eval", exist_ok=True)
     with open("data/eval/eval_log.jsonl", "w") as f:
 
         for filename, text in cases:
-            # --- Rule-based baseline ---
             rule_based = extract_factors(text)
             print("RULE-BASED:", rule_based)
 
             metadata = extract_metadata(text)
             metadata["FILE"] = filename
             case_metadata.append(metadata)
-            
 
-            RUNS_PER_CASE = 1
+            RUNS_PER_CASE = 2
             run_outputs = []
 
-            for _ in range(RUNS_PER_CASE):
+            for run_idx in range(RUNS_PER_CASE):
                 out = extract_factors_llm(text, use_cache=False)
                 run_outputs.append(out)
-
-            # Use first run
-            factors = run_outputs[0]
-
-            # Build factor vector
-            vector = build_factor_vector(
-                factors["mentioned"],
-                factors["most_weighted"]
-            )
-
-            # -------------------------
-            # Truncation Robustness Test
-            # -------------------------
-            full_top1 = factors["most_weighted"][0] if factors["most_weighted"] else None
-
-            trunc_modes = ["first_half", "second_half", "middle"]
-            trunc_matches = 0
-
-            for mode in trunc_modes:
-                truncated_text = truncate_text(text, mode)
-                trunc_result = extract_factors_llm(truncated_text)
-
-                trunc_top1 = (
-                    trunc_result["most_weighted"][0]
-                    if trunc_result["most_weighted"]
-                    else None
+                # Build factor vector for each run
+                vector = build_factor_vector(
+                    out["mentioned"],
+                    out["most_weighted"]
                 )
 
-                if trunc_top1 == full_top1:
-                    trunc_matches += 1
+                # Truncation Robustness Test
+                full_top1 = out["most_weighted"][0] if out["most_weighted"] else None
+                trunc_modes = ["first_half", "second_half", "middle"]
+                trunc_matches = 0
+                for mode in trunc_modes:
+                    truncated_text = truncate_text(text, mode)
+                    trunc_result = extract_factors_llm(truncated_text)
+                    trunc_top1 = (
+                        trunc_result["most_weighted"][0]
+                        if trunc_result["most_weighted"]
+                        else None
+                    )
+                    if trunc_top1 == full_top1:
+                        trunc_matches += 1
+                truncation_score = trunc_matches / len(trunc_modes)
+                truncation_scores.append(truncation_score)
 
-            truncation_score = trunc_matches / len(trunc_modes)
+                # Noise Robustness Test
+                noisy_text = add_noise(text)
+                noisy_result = extract_factors_llm(noisy_text)
+                noise_top1 = (
+                    noisy_result["most_weighted"][0]
+                    if noisy_result["most_weighted"]
+                    else None
+                )
+                noise_score = 1.0 if noise_top1 == full_top1 else 0.0
+                noise_scores.append(noise_score)
 
-            all_results.append(factors)
-
-            # -------------------------
-            # Stability computation
-            # -------------------------
-            top1_predictions = []
-
-            for r in run_outputs:
-                if r["most_weighted"]:
-                    top1_predictions.append(r["most_weighted"][0])
+                # Compute run-level stability (all runs per case)
+                if RUNS_PER_CASE == 1:
+                    run_stability = 1.0
                 else:
-                    top1_predictions.append("NONE")
+                    top1_predictions = [r["most_weighted"][0] if r["most_weighted"] else "NONE" for r in run_outputs]
+                    most_common = Counter(top1_predictions).most_common(1)[0]
+                    run_stability = most_common[1] / RUNS_PER_CASE
 
+                eval_record = {
+                    "file": filename,
+                    "metadata": metadata,
+                    "run_index": run_idx,
+                    "most_weighted": out["most_weighted"],
+                    "confidence": out["confidence"],
+                    "mentioned": out["mentioned"],
+                    "truncation_robustness": truncation_score,
+                    "noise_robustness": noise_score,
+                    "factor_vector": vector,
+                    "explanation": out["explanation"],
+                    "top_factor": out["most_weighted"][0] if out["most_weighted"] else None,
+                    "stability": run_stability
+                }
+                f.write(json.dumps(eval_record) + "\n")
+
+            # Stability computation (after all runs)
+            top1_predictions = [r["most_weighted"][0] if r["most_weighted"] else "NONE" for r in run_outputs]
             print(f"Run-level Top1s for {filename}: {top1_predictions}")
-
             if RUNS_PER_CASE == 1:
                 stability_score = 1.0
             else:
                 most_common = Counter(top1_predictions).most_common(1)[0]
                 stability_score = most_common[1] / RUNS_PER_CASE
-            
-            
-            # -------------------------
-            # Noise Robustness Test (all cases)
-            # -------------------------
-            noisy_text = add_noise(text)
-            noisy_result = extract_factors_llm(noisy_text)
-
-            noise_top1 = (
-                noisy_result["most_weighted"][0]
-                if noisy_result["most_weighted"]
-                else None
-            )
-
-            noise_score = 1.0 if noise_top1 == full_top1 else 0.0
-
-            # ---- Evaluation logging ----
-            eval_record = {
-                "file": filename,
-                "metadata": metadata,
-                "most_weighted": factors["most_weighted"],
-                "confidence": factors["confidence"],
-                "mentioned": factors["mentioned"],
-                "stability": stability_score,
-                "truncation_robustness": truncation_score,
-                "noise_robustness": noise_score,
-                "factor_vector": vector,
-                "explanation": factors["explanation"],
-                "top_factor": factors["most_weighted"][0] if factors["most_weighted"] else None
-                
-    
-            }
-
-            f.write(json.dumps(eval_record) + "\n")
+            # Optionally, log stability_score separately or aggregate as needed
 
     
 
     counter = Counter()
 
-    
-    for result in all_results:
-        for factor in result["most_weighted"]:
-            counter[factor] += 1
-
-
+    print(
+        """
+        This analysis reviews a set of divorce opinions and identifies which statutory
+        equitable-distribution factors the court appears to rely on most heavily in
+        reaching its decision. These results reflect dominant judicial reasoning,
+        not merely whether a factor was mentioned.
+        """
+    )
     total_cases = len(all_results)
 
     factor_frequencies = {
@@ -473,10 +456,10 @@ if __name__ == "__main__":
         "top_1_accuracy": correct_top1 / total if total > 0 else 0,
         "top_3_accuracy": correct_top3 / total if total > 0 else 0,
         "avg_stability": sum(stability_scores) / len(stability_scores) if stability_scores else 0,
-        "avg_truncation_robustness": sum(trunc_scores) / len(trunc_scores) if trunc_scores else 0,
+        "avg_truncation_robustness": sum(truncation_scores) / len(truncation_scores) if truncation_scores else 0,
         "avg_noise_robustness": sum(noise_scores) / len(noise_scores) if noise_scores else 0,
         "perfectly_stable_cases": sum(1 for s in stability_scores if s == 1.0),
-        "perfectly_robust_cases": sum(1 for s in trunc_scores if s == 1.0),
+        "perfectly_robust_cases": sum(1 for s in truncation_scores if s == 1.0),
         "noise_robust_cases": sum(1 for s in noise_scores if s == 1.0),
         "per_factor_accuracy": {
             factor: factor_correct[factor] / factor_total[factor]

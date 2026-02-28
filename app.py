@@ -255,53 +255,7 @@ elif page == "How the System Was Evaluated":
             st.markdown("**Robustness Tests:**")
             st.markdown("• Stability (repeated runs)\n• Confidence Calibration\n• Truncation Robustness")
 
-    # Load latest results summary
-    st.subheader("🎯 Latest Model Performance")
     
-    latest_results = None
-    try:
-        with open("data/eval/results_summary.jsonl", "r") as f:
-            lines = f.readlines()
-            if lines:
-                latest_results = json.loads(lines[-1].strip())
-    except FileNotFoundError:
-        pass
-
-    if latest_results:
-        # Display accuracy metrics row 1
-        st.write("**Accuracy Metrics**")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Top-1 Accuracy", f"{latest_results['top_1_accuracy']:.0%}")
-        with col2:
-            st.metric("Top-3 Accuracy", f"{latest_results['top_3_accuracy']:.0%}")
-        with col3:
-            st.metric("Test Cases", latest_results['dataset_size'])
-
-        # Display robustness metrics row 2
-        st.write("**Robustness Metrics**")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Avg Stability", f"{latest_results['avg_stability']:.2f}")
-        with col2:
-            st.metric("Truncation Robustness", f"{latest_results['avg_truncation_robustness']:.2f}")
-        with col3:
-            st.metric("Noise Robustness", f"{latest_results['avg_noise_robustness']:.2f}")
-
-        # Per-factor accuracy
-        st.write("**Per-Factor Accuracy**")
-        if latest_results['per_factor_accuracy']:
-            factor_data = []
-            for factor, acc in latest_results['per_factor_accuracy'].items():
-                readable = factor.replace("_", " ").title()
-                factor_data.append({"Factor": readable, "Accuracy": f"{acc:.0%}"})
-            
-            st.dataframe(factor_data, use_container_width=True, hide_index=True)
-        
-        st.caption(f"📅 Evaluated: {latest_results['timestamp']}")
-    else:
-        st.info("No evaluation results yet. Run `python -m src.main` to generate results.")
-
     st.markdown("---")
     
     # Load data
@@ -310,7 +264,8 @@ elif page == "How the System Was Evaluated":
         with open("data/eval/human_labels.csv", newline="") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                human_labels[row["file"]] = row["correct_factor"]
+                filename = row["file"].strip().lower()
+                human_labels[filename] = row["correct_factor"].strip().lower()
     except FileNotFoundError:
         st.warning("No human_labels.csv found.")
         st.stop()
@@ -324,66 +279,101 @@ elif page == "How the System Was Evaluated":
                 if not line:
                     continue
                 eval_records.append(json.loads(line))
+    
     except FileNotFoundError:
         st.warning("No evaluation log found.")
         st.stop()
     except json.JSONDecodeError:
         st.error("Evaluation log is corrupted.")
         st.stop()
-
-    # Compute metrics
-    correct = 0
+     #Debug
+    st.write("Eval files:", [r["file"] for r in eval_records])
+    st.write("Human label files:", list(human_labels.keys()))
+   
+    correct_top1 = 0
+    correct_top3 = 0
     total = 0
+
     confidence_counter = Counter()
     factor_counter = Counter()
     confidence_correct = Counter()
     confidence_total = Counter()
+
     true_positive = defaultdict(int)
     false_positive = defaultdict(int)
     false_negative = defaultdict(int)
     error_cases = []
 
+   
     for rec in eval_records:
-        file = rec["file"]
-        model = rec["most_weighted"]
+        file = rec["file"].strip().lower()
+        model = rec.get("most_weighted", [])
         confidence = rec.get("confidence", "unknown")
 
         confidence_counter[confidence] += 1
         for f in model:
             factor_counter[f] += 1
 
-        if file in human_labels:
-            total += 1
-            human = human_labels[file]
-            is_correct = human in model
-            confidence_total[confidence] += 1
-            if is_correct:
-                confidence_correct[confidence] += 1
-                correct += 1
+        if file not in human_labels:
+            st.warning(f"Missing human label for: {file}")
+            continue
+
+        total += 1
+
+        human = human_labels[file]
+
+        # ---- NORMALIZE STRINGS (CRITICAL FIX) ----
+        human_clean = human.strip().lower()
+        model_clean = [m.strip().lower() for m in model]
+
+        # ---- TOP 1 ----
+        top1_correct = len(model_clean) > 0 and model_clean[0] == human_clean
+        if top1_correct:
+            correct_top1 += 1
+
+        # ---- TOP 3 ----
+        top3_correct = human_clean in model_clean
+        if top3_correct:
+            correct_top3 += 1
+
+        confidence_total[confidence] += 1
+        if top1_correct:
+            confidence_correct[confidence] += 1
+
+        if not top1_correct:
+            error_cases.append({
+                "file": file,
+                "model": ", ".join(model_clean) if model_clean else "None",
+                "human": human_clean,
+                "confidence": confidence
+            })
+
+        # ---- Precision / Recall tracking ----
+        for factor in model_clean:
+            if factor == human_clean:
+                true_positive[factor] += 1
             else:
-                error_cases.append({
-                    "file": file,
-                    "model": ", ".join(model) if model else "None",
-                    "human": human,
-                    "confidence": confidence
-                })
-            
-            for factor in model:
-                if factor == human:
-                    true_positive[factor] += 1
-                else:
-                    false_positive[factor] += 1
+                false_positive[factor] += 1
 
-            if human not in model:
-                false_negative[human] += 1
+        if human_clean not in model_clean:
+            false_negative[human_clean] += 1
 
-    accuracy = correct / total if total > 0 else 0
+
+    # ---- FINAL ACCURACY ----
+    top1_accuracy = correct_top1 / total if total else 0
+    top3_accuracy = correct_top3 / total if total else 0
+    if total == 0:
+        st.error("No matching files between eval_log and human_labels.csv")
+        st.stop()
+
+    
 
     # Display top metrics
     st.subheader("📈 Overall Performance")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Accuracy", f"{accuracy:.0%}")
+        st.metric("Top-1 Accuracy", f"{top1_accuracy:.0%}")
+        st.metric("Top-3 Accuracy", f"{top3_accuracy:.0%}")
     with col2:
         st.metric("Cases Evaluated", total)
     with col3:
@@ -514,6 +504,7 @@ elif page == "Evaluation Log":
         
         This provides complete transparency into system evaluation.
         """)
+    
 
     log_path = "data/eval/eval_log.jsonl"
     records = []
