@@ -65,7 +65,8 @@ def extract_factors_llm(text: str, use_cache=True) -> dict:
     Returns the same schema as extract_factors().
     """
     schema = FACTOR_SCHEMA
-    cached = get_cached_result(text.strip())
+    
+    
     if use_cache:
         cached = get_cached_result(text.strip())
         if cached:

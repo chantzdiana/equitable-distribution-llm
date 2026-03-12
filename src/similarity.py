@@ -16,10 +16,15 @@ def cosine_similarity(v1, v2):
 
 def find_most_similar_cases(query_vector, top_k=8, path="data/eval/eval_log.jsonl"):
     results = []
-
+    seen = set()
     with open(path) as f:
         for line in f:
             rec = json.loads(line)
+            if rec["file"] in seen:
+                continue
+
+            seen.add(rec["file"])
+            
             vec = rec.get("factor_vector")
             if not vec:
                 continue

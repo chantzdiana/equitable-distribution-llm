@@ -6,6 +6,7 @@ from collections import Counter, defaultdict
 from src.extract_factors import extract_factors_llm, FACTOR_SCHEMA
 from src.main import extract_metadata
 
+st.set_page_config(page_title="Equitable Distribution LLM Analyzer")
 # Initialize session state for page navigation
 if "current_page" not in st.session_state:
     st.session_state.current_page = "Home"
@@ -20,7 +21,7 @@ page = st.sidebar.radio(
 st.session_state.current_page = page
 
 if page == "Home":
-    st.set_page_config(page_title="Equitable Distribution LLM Analyzer")
+    
     
     st.title("⚖️ Equitable Distribution LLM Analyzer")
     st.markdown("---")
@@ -114,7 +115,7 @@ if page == "Home":
         """)
 
 elif page == "Analyzer":
-    st.set_page_config(page_title="Equitable Distribution Analyzer")
+    
 
     st.title("Equitable Distribution Jurisdiction Analyzer")
 
@@ -286,9 +287,7 @@ elif page == "How the System Was Evaluated":
     except json.JSONDecodeError:
         st.error("Evaluation log is corrupted.")
         st.stop()
-     #Debug
-    st.write("Eval files:", [r["file"] for r in eval_records])
-    st.write("Human label files:", list(human_labels.keys()))
+    
    
     correct_top1 = 0
     correct_top3 = 0

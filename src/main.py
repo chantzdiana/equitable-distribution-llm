@@ -78,6 +78,7 @@ if __name__ == "__main__":
     os.makedirs("data/eval", exist_ok=True)
     with open("data/eval/eval_log.jsonl", "w") as f:
 
+        counter = Counter()
         for filename, text in cases:
             rule_based = extract_factors(text)
             print("RULE-BASED:", rule_based)
@@ -88,6 +89,7 @@ if __name__ == "__main__":
 
             RUNS_PER_CASE = 2
             run_outputs = []
+            
 
             for run_idx in range(RUNS_PER_CASE):
                 out = extract_factors_llm(text, use_cache=False)
@@ -158,11 +160,15 @@ if __name__ == "__main__":
             else:
                 most_common = Counter(top1_predictions).most_common(1)[0]
                 stability_score = most_common[1] / RUNS_PER_CASE
-            # Optionally, log stability_score separately or aggregate as needed
-
+            
+            all_results.append(run_outputs[0])
+            
+            for factor in run_outputs[0]["most_weighted"]:
+                counter[factor] += 1
+            
     
 
-    counter = Counter()
+    #counter = Counter()
 
     print(
         """
@@ -470,8 +476,8 @@ if __name__ == "__main__":
     os.makedirs("data/eval", exist_ok=True)
     
     # Append to summary log
-    summary_log_path = "data/eval/results_summary.jsonl"
+    summary_log_path = "data/eval/run_history.jsonl"
     with open(summary_log_path, "a") as f:
         f.write(json.dumps(results_summary) + "\n")
     
-    print("\n✅ Results summary saved to data/eval/results_summary.jsonl")
+    print("\n✅ Results summary saved to data/eval/run_history.jsonl")
