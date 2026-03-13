@@ -128,13 +128,32 @@ if __name__ == "__main__":
                 noise_score = 1.0 if noise_top1 == full_top1 else 0.0
                 noise_scores.append(noise_score)
 
-                # Compute run-level stability (all runs per case)
-                if RUNS_PER_CASE == 1:
-                    run_stability = 1.0
-                else:
-                    top1_predictions = [r["most_weighted"][0] if r["most_weighted"] else "NONE" for r in run_outputs]
-                    most_common = Counter(top1_predictions).most_common(1)[0]
-                    run_stability = most_common[1] / RUNS_PER_CASE
+            # -----------------------------
+            # Compute stability FIRST
+            # -----------------------------
+            top1_predictions = [
+                r["most_weighted"][0] if r["most_weighted"] else "NONE"
+                for r in run_outputs
+            ]
+
+            print(f"Run-level Top1s for {filename}: {top1_predictions}")
+
+            if RUNS_PER_CASE == 1:
+                run_stability = 1.0
+            else:
+                most_common = Counter(top1_predictions).most_common(1)[0]
+                run_stability = most_common[1] / RUNS_PER_CASE
+
+
+            # -----------------------------
+            # Write eval records
+            # -----------------------------
+            for run_idx, out in enumerate(run_outputs):
+
+                vector = build_factor_vector(
+                    out["mentioned"],
+                    out["most_weighted"]
+                )
 
                 eval_record = {
                     "file": filename,
@@ -150,17 +169,12 @@ if __name__ == "__main__":
                     "top_factor": out["most_weighted"][0] if out["most_weighted"] else None,
                     "stability": run_stability
                 }
+
                 f.write(json.dumps(eval_record) + "\n")
 
-            # Stability computation (after all runs)
-            top1_predictions = [r["most_weighted"][0] if r["most_weighted"] else "NONE" for r in run_outputs]
-            print(f"Run-level Top1s for {filename}: {top1_predictions}")
-            if RUNS_PER_CASE == 1:
-                stability_score = 1.0
-            else:
-                most_common = Counter(top1_predictions).most_common(1)[0]
-                stability_score = most_common[1] / RUNS_PER_CASE
             
+           
+           
             all_results.append(run_outputs[0])
             
             for factor in run_outputs[0]["most_weighted"]:
@@ -286,8 +300,8 @@ if __name__ == "__main__":
         if filename in human_labels:
             total += 1
 
-            human = human_labels[filename]
-            model = result["most_weighted"]
+            human = human_labels[filename].strip().lower()
+            model = [m.strip().lower() for m in result["most_weighted"]]
 
             top1_correct = (len(model) > 0 and model[0] == human)
             top3_correct = (human in model)
