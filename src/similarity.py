@@ -11,10 +11,48 @@ def cosine_similarity(v1, v2):
         return 0.0
 
     return dot / (mag1 * mag2)
+def compute_idf(path="data/eval/eval_log.jsonl"):
+    from collections import Counter
 
+    factor_counts = Counter()
+    total_cases = 0
+    seen_files = set()
 
+    with open(path) as f:
+        for line in f:
+            rec = json.loads(line)
+
+            # avoid counting duplicate runs
+            if rec["file"] in seen_files:
+                continue
+
+            seen_files.add(rec["file"])
+            total_cases += 1
+
+            factors = set(rec.get("most_weighted", []))
+            for fct in factors:
+                factor_counts[fct] += 1
+
+    idf = {}
+
+    for factor in factor_counts:
+        idf[factor] = math.log(total_cases / (1 + factor_counts[factor]))
+
+    return idf
+def apply_idf_weights(vector, factors, idf):
+
+    weighted = []
+
+    for val in vector:
+        if val > 0:
+            weighted.append(val * 2)  # simple importance boost
+        else:
+            weighted.append(0)
+
+    return weighted
 
 def find_most_similar_cases(query_vector, top_k=8, path="data/eval/eval_log.jsonl"):
+    idf = compute_idf(path)
     results = []
     seen = set()
     with open(path) as f:
@@ -29,7 +67,12 @@ def find_most_similar_cases(query_vector, top_k=8, path="data/eval/eval_log.json
             if not vec:
                 continue
 
-            score = cosine_similarity(query_vector, vec)
+            weighted_vec = apply_idf_weights(
+                vec,
+                rec.get("most_weighted", []),
+                idf
+            )
+            score = cosine_similarity(query_vector, weighted_vec)
 
             results.append({
                 "file": rec["file"],
