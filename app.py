@@ -641,7 +641,7 @@ elif page == "Case Similarity":
                 result["mentioned"],
                 result["most_weighted"]
             )
-            similar_cases = find_most_similar_cases(query_vector, top_k=10)
+            similar_cases = find_most_similar_cases(query_vector, user_text, top_k=10)
 
         # --- Summary Statistics ---
         st.divider()
