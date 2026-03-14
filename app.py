@@ -5,6 +5,8 @@ import csv
 from collections import Counter, defaultdict
 from src.extract_factors import extract_factors_llm, FACTOR_SCHEMA
 from src.main import extract_metadata
+from src.factor_explanations import FACTOR_EXPLANATIONS
+from src.user_similarity import analyze_user_case
 
 st.set_page_config(page_title="Equitable Distribution LLM Analyzer")
 # Initialize session state for page navigation
@@ -139,37 +141,22 @@ elif page == "Analyzer":
 
             with st.spinner("Analyzing cases..."):
                 for file in uploaded_files:
-                    filename = file.name   # <-- get case name
 
+                    filename = file.name
                     text = file.read().decode("utf-8")
+
                     metadata = extract_metadata(text)
                     case_metadata.append(metadata)
 
                     factors = extract_factors_llm(text, use_cache=True)
+
                     all_results.append(factors)
 
-                    # ---- CASE HEADER ----
                     st.markdown(f"### Case: {filename}")
 
-                    # Optional: show metadata if present
-                    if metadata:
-                        meta_parts = []
-                        if "COURT" in metadata:
-                            meta_parts.append(metadata["COURT"])
-                        if "YEAR" in metadata:
-                            meta_parts.append(metadata["YEAR"])
-                        if "JUDGE" in metadata:
-                            meta_parts.append(f"Judge {metadata['JUDGE']}")
-
-                        if meta_parts:
-                            st.caption(" • ".join(meta_parts))
-
-                    # ---- MODEL OUTPUT ----
                     st.write("**Confidence:**", factors["confidence"])
                     st.info(factors["explanation"])
                     st.divider()
-
-            
                 #
 
             counter = Counter()
@@ -225,6 +212,23 @@ elif page == "Analyzer":
                         f"{label}: {readable} "
                         f"(primary factor in {count} of {len(all_results)} cases, {freq:.0%})"
                     )
+            if counter:
+                dominant_factor = counter.most_common(1)[0][0]
+
+                if dominant_factor in FACTOR_EXPLANATIONS:
+
+                    info = FACTOR_EXPLANATIONS[dominant_factor]
+
+                    st.markdown("### ⚖️ Legal Basis")
+
+                    st.markdown(f"""
+            **Statute:** {info["statute"]}
+
+            **Summary:** {info["summary"]}
+
+            **Typical Court Reasoning:**  
+            {info["typical_reasoning"]}
+            """)
 
             st.caption(
                 "Interpretation: A factor labeled 'Frequently decisive' appeared to drive the "
@@ -603,13 +607,15 @@ elif page == "Case Similarity":
 
     if st.button("🔍 Find Similar Cases", use_container_width=True) and user_text.strip():
 
-        from src.vectorize import build_factor_vector
-        from src.similarity import find_most_similar_cases
+        #from src.vectorize import build_factor_vector
+       # from src.similarity import find_most_similar_cases
 
         # --- Analyze user case ---
         with st.spinner("⏳ Analyzing case..."):
-            result = extract_factors_llm(user_text)
+            user_result = analyze_user_case(user_text)
 
+        result = user_result["analysis"]
+        similar_cases = user_result["similar_cases"]
         # --- User Case Analysis ---
         st.divider()
         st.subheader("📊 Your Case Analysis")
@@ -635,13 +641,7 @@ elif page == "Case Similarity":
         with st.expander("📝 Model's Reasoning", expanded=True):
             st.info(result["explanation"])
 
-        # --- Build vector and find similar cases ---
-        with st.spinner("🔎 Searching case database..."):
-            query_vector = build_factor_vector(
-                result["mentioned"],
-                result["most_weighted"]
-            )
-            similar_cases = find_most_similar_cases(query_vector, user_text, top_k=10)
+        
 
         # --- Summary Statistics ---
         st.divider()
@@ -670,65 +670,50 @@ elif page == "Case Similarity":
             st.warning("❌ No similar cases found.")
         else:
             for idx, s in enumerate(similar_cases, 1):
-                score = float(s["score"]) if s["score"] is not None else 0.0
-                percentage = round(score * 100, 1)
-                
-                # Medal for top matches
-                medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(idx, f"{idx}️⃣")
-                
-                with st.expander(
-                    f"{medal} {s['file']} ({percentage}% match)",
-                    expanded=(idx == 1)
-                ):
-                    # Metadata row
-                    col1, col2, col3, col4 = st.columns(4)
+
+                score = float(s["score"]) if s["score"] else 0.0
+                pct = round(score * 100)
+
+                case_title = s["file"].replace(".txt", "").replace("_", " ").title()
+                judge = s.get("judge", "Unknown")
+                court = s.get("metadata", {}).get("COURT", "—")
+                year = s.get("metadata", {}).get("YEAR", "—")
+
+                top_factor = (
+                    s["top_factor"].replace("_", " ").title()
+                    if s.get("top_factor")
+                    else "Unknown"
+                )
+
+                with st.container():
+
+                    st.markdown(f"### ⚖️ {case_title}")
+
+                    col1, col2, col3 = st.columns([2,1,1])
+
                     with col1:
-                        st.caption("**Judge**")
-                        st.caption(s.get("judge", "—"))
+                        st.write(f"**Judge:** {judge}")
+                        st.write(f"**Dominant Factor:** {top_factor}")
+
                     with col2:
-                        st.caption("**Court**")
-                        st.caption(s.get("metadata", {}).get("COURT", "—") if isinstance(s.get("metadata"), dict) else "—")
+                        st.write(f"**Court:** {court}")
+                        st.write(f"**Year:** {year}")
+
                     with col3:
-                        st.caption("**Year**")
-                        st.caption(str(s.get("metadata", {}).get("YEAR", "—")) if isinstance(s.get("metadata"), dict) else "—")
-                    with col4:
-                        st.caption("**Match**")
-                        st.caption(f"{percentage}%")
-                    
-                    st.divider()
-                    
-                    # Factor comparison
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown("**Case's Dominant Factor:**")
-                        readable_factor = (
-                            s['top_factor'].replace("_", " ").title()
-                            if s['top_factor'] else "Unknown"
+                        st.metric("Match", f"{pct}%")
+
+                    st.progress(score)
+
+                    if s.get("most_weighted"):
+                        st.caption(
+                            "Factors: " +
+                            ", ".join(f.replace("_"," ") for f in s["most_weighted"])
                         )
-                        st.success(readable_factor)
-                        
-                        if s.get("most_weighted"):
-                            st.markdown("**All Factors:**")
-                            for f in s.get("most_weighted", [])[:3]:
-                                st.caption(f"• {f.replace('_', ' ')}")
-                    
-                    with col2:
-                        st.markdown("**Shared Legal Reasoning:**")
-                        query_top = result["most_weighted"] or []
-                        case_top = s.get("most_weighted", [])
-                        shared = set(query_top) & set(case_top)
-                        
-                        if shared:
-                            readable_shared = [f.replace("_", " ").title() for f in shared]
-                            for f in readable_shared:
-                                st.caption(f"✓ {f}")
-                        else:
-                            st.caption("Similarity based on structural patterns")
-                    
+
                     st.divider()
                     
                     # Similarity bar
-                    st.progress(min(max(score, 0.0), 1.0), text=f"{percentage}% structural match")
+                  #  st.progress(min(max(score, 0.0), 1.0), text=f"{percentage}% structural match")
 
         # --- Summary recommendation ---
         st.divider()

@@ -2,8 +2,13 @@ import math
 import json
 from sentence_transformers import SentenceTransformer
 import numpy as np
+import streamlit as st
 
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+@st.cache_resource
+def load_embedding_model():
+    return SentenceTransformer("all-MiniLM-L6-v2")
+
+embedding_model = load_embedding_model()
 
 def cosine_similarity(v1, v2):
     dot = sum(a*b for a, b in zip(v1, v2))
@@ -61,7 +66,7 @@ def apply_idf_weights(vector, factors, idf):
 
     for val in vector:
         if val > 0:
-            weighted.append(val * 2)  # simple importance boost
+            weighted.append(val * 1.5)  # simple importance boost
         else:
             weighted.append(0)
 
