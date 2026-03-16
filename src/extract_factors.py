@@ -19,38 +19,82 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 FACTOR_SCHEMA = [
-    "income_and_property_at_marriage_and_divorce",   # §236(B)(5)(d)(1)
-    "duration_of_marriage_age_and_health",           # §236(B)(5)(d)(2)
-    "custodial_parent_housing_needs",                 # §236(B)(5)(d)(3)
-    "loss_of_inheritance_or_pension",                 # §236(B)(5)(d)(4)
-    "loss_of_health_insurance",                       # §236(B)(5)(d)(5)
-    "maintenance_award",                              # §236(B)(5)(d)(6)
-    "contributions_to_marital_property_and_career",  # §236(B)(5)(d)(7)
-    "liquidity_of_assets",                            # §236(B)(5)(d)(8)
-    "future_financial_circumstances",                 # §236(B)(5)(d)(9)
-    "valuation_difficulty_and_business_assets",      # §236(B)(5)(d)(10)
-    "tax_consequences",                               # §236(B)(5)(d)(11)
-    "wasteful_dissipation_of_assets",                 # §236(B)(5)(d)(12)
-    "improper_transfers_or_encumbrances",             # §236(B)(5)(d)(13)
-    "domestic_violence",                              # §236(B)(5)(d)(14)
-    "companion_animal_best_interests",                # §236(B)(5)(d)(15)
-    "other_just_and_proper_factors",                  # §236(B)(5)(d)(16)
+    "income_and_property_at_marriage_and_divorce",          # (1)
+    "duration_of_marriage_age_and_health",                   # (2)
+    "custodial_parent_residence_needs",                      # (3)
+    "loss_of_inheritance_and_pension_rights",                # (4)
+    "loss_of_health_insurance",                              # (5)
+    "maintenance_award",                                     # (6)
+    "contributions_to_marital_property_and_career",          # (7)
+    "liquidity_of_assets",                                   # (8)
+    "future_financial_circumstances",                        # (9)
+    "difficulty_of_asset_valuation_or_business_interests",   # (10)
+    "tax_consequences",                                      # (11)
+    "wasteful_dissipation_of_assets",                        # (12)
+    "improper_transfer_or_encumbrance",                      # (13)
+    "domestic_violence",                                     # (14)
+    "companion_animal_best_interests",                       # (15)
+    "other_just_and_proper_factor"                           # (16)
 ]
 
 
 def extract_factors(text: str) -> dict:
     """
-    Returns a dictionary mapping factor names to booleans.
+    Simple rule-based baseline for detecting equitable-distribution factors.
+    Uses keyword heuristics mapped to the same schema as the LLM model.
     """
     text = text.lower()
 
     return {
-        "duration_of_marriage": "duration" in text or "length of the marriage" in text,
-        "earning_capacity": "earning" in text or "income" in text,
-        "contributions_to_marriage": "contribution" in text,
-        "age_and_health": any( phrase in text for phrase in [" age ", " health ", " medical"]),
 
-        "misconduct": "misconduct" in text or "fault" in text
+        "income_and_property_at_marriage_and_divorce":
+            "income" in text or "salary" in text or "property" in text,
+
+        "duration_of_marriage_age_and_health":
+            "duration" in text or "length of the marriage" in text
+            or "age" in text or "health" in text or "medical" in text,
+
+        "custodial_parent_residence_needs":
+            "custodial parent" in text or "marital residence" in text or "household effects" in text,
+
+        "loss_of_inheritance_and_pension_rights":
+            "pension" in text or "inheritance" in text or "retirement" in text,
+
+        "loss_of_health_insurance":
+            "health insurance" in text or "insurance coverage" in text,
+
+        "maintenance_award":
+            "maintenance" in text or "spousal support" in text or "alimony" in text,
+
+        "contributions_to_marital_property_and_career":
+            "contribution" in text or "career" in text or "education" in text,
+
+        "liquidity_of_assets":
+            "liquid" in text or "non-liquid" in text or "liquidity" in text,
+
+        "future_financial_circumstances":
+            "future financial" in text or "earning capacity" in text or "future income" in text,
+
+        "difficulty_of_asset_valuation_or_business_interests":
+            "valuation" in text or "business interest" in text or "professional practice" in text,
+
+        "tax_consequences":
+            "tax" in text,
+
+        "wasteful_dissipation_of_assets":
+            "dissipation" in text or "waste" in text,
+
+        "improper_transfer_or_encumbrance":
+            "transfer" in text or "encumbrance" in text or "conceal" in text,
+
+        "domestic_violence":
+            "domestic violence" in text or "abuse" in text,
+
+        "companion_animal_best_interests":
+            "dog" in text or "cat" in text or "companion animal" in text or "pet" in text,
+
+        "other_just_and_proper_factor":
+            False
     }
 
 def chunk_text(text, chunk_size=2500):
@@ -64,7 +108,7 @@ def extract_factors_llm(text: str, use_cache=True) -> dict:
     Uses an LLM to extract equitable-distribution factors from text.
     Returns the same schema as extract_factors().
     """
-    schema = FACTOR_SCHEMA
+    schema_json = json.dumps(FACTOR_SCHEMA, indent=2)
     
     
     if use_cache:
@@ -111,6 +155,25 @@ def extract_factors_llm(text: str, use_cache=True) -> dict:
     - Order matters: first = most decisive
     - Do NOT guess
 
+    Confidence Guidelines:
+
+    Assign confidence based on how clearly the opinion identifies the decisive factor.
+
+    High confidence:
+    The opinion explicitly states that the court relied primarily or heavily on a factor,
+    using reasoning language such as "primary consideration", "determinative",
+    "critical to the outcome", or "the court relies heavily on".
+
+    Medium confidence:
+    The factor appears central to the reasoning but the court does not explicitly state
+    that it is decisive. Multiple factors may appear important.
+
+    Low confidence:
+    The opinion discusses several factors but it is unclear which factor drives the
+    decision, or the reasoning language is weak or ambiguous.
+
+    Use the lowest confidence level that accurately reflects the certainty of the reasoning.
+
     Return ONLY valid JSON in this format:
 
     {{
@@ -126,7 +189,7 @@ def extract_factors_llm(text: str, use_cache=True) -> dict:
 
     Use ONLY these factors:
 
-    {schema}
+    {schema_json}
 
     Case text:
     {text}
@@ -140,7 +203,12 @@ def extract_factors_llm(text: str, use_cache=True) -> dict:
     chunk_results = []
 
     for chunk in chunks:
-        chunk_prompt = prompt.replace(text, chunk)
+        chunk_prompt = f"""
+        {prompt}
+
+        Case text:
+        {chunk}
+        """
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",

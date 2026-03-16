@@ -8,115 +8,168 @@ from src.main import extract_metadata
 from src.factor_explanations import FACTOR_EXPLANATIONS
 from src.user_similarity import analyze_user_case
 
-st.set_page_config(page_title="Equitable Distribution LLM Analyzer")
+st.set_page_config(
+    page_title="Equitable Distribution Analyzer",
+    layout="wide"
+)
+st.markdown(
+    """
+    <style>
+    div[data-testid="stVerticalBlock"] > div:has(div.stContainer) {
+        padding: 10px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+st.markdown("""
+<style>
+
+/* background */
+.stApp {
+    background-color: #0f172a;
+}
+
+/* titles */
+h1, h2, h3 {
+    color: #e2e8f0;
+}
+
+/* card styling */
+div[data-testid="stContainer"] {
+    background-color: #1e293b;
+    padding: 20px;
+    border-radius: 14px;
+    border: 1px solid #334155;
+}
+
+/* buttons */
+button[kind="secondary"] {
+    border-radius: 10px;
+}
+
+/* sidebar */
+section[data-testid="stSidebar"] {
+    background-color: #111827;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+st.markdown("""
+<style>
+
+.block-container {
+    padding-top: 2rem;
+}
+
+.main-title {
+    font-size: 42px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.card {
+    background-color: #f8f9fb;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #e6e8ec;
+    min-height: 140px;
+}
+
+.metric-card {
+    background-color: white;
+    padding: 18px;
+    border-radius: 10px;
+    border: 1px solid #e5e5e5;
+}
+
+.case-card {
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid #e6e6e6;
+    background: white;
+    margin-bottom: 12px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+
+
+
 # Initialize session state for page navigation
-if "current_page" not in st.session_state:
-    st.session_state.current_page = "Home"
+if "page" not in st.session_state:
+    st.session_state.page = "Home"
 
 page = st.sidebar.radio(
     "Navigation",
-    ["Home", "Analyzer", "How the System Was Evaluated", "Evaluation Log", "Case Similarity"],
-    index=["Home", "Analyzer", "How the System Was Evaluated", "Evaluation Log", "Case Similarity"].index(st.session_state.current_page)
+    [
+        "Home",
+        "Analyzer",
+        "How the System Was Evaluated",
+        "Evaluation Log",
+        "Case Similarity"
+    ],
+    index=[
+        "Home",
+        "Analyzer",
+        "How the System Was Evaluated",
+        "Evaluation Log",
+        "Case Similarity"
+    ].index(st.session_state.page)
 )
 
-# Update session state with selected page
-st.session_state.current_page = page
+st.session_state.page = page
 
-if page == "Home":
-    
-    
-    st.title("⚖️ Equitable Distribution LLM Analyzer")
-    st.markdown("---")
-    
-    st.markdown("""
-    <div style="text-align: center; margin-bottom: 2rem;">
-    <h2>Welcome to Your Legal Research Assistant</h2>
-    <p style="font-size: 1.1rem; color: #666;">
-    Analyze divorce opinions and discover similar cases based on equitable-distribution factors.
-    </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    st.subheader("📚 Choose Your Path")
-    
-    # Create cards for each page
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("""
-        ### 📄 **Analyzer**
-        Upload divorce opinions or case excerpts to identify which New York equitable-distribution 
-        factors the courts emphasize. Get factor analysis and judge-level insights.
-        """)
-        if st.button("🔍 Go to Analyzer", use_container_width=True, key="btn_analyzer"):
-            st.session_state.current_page = "Analyzer"
-            st.rerun()
-    
-    with col2:
-        st.markdown("""
-        ### 📊 **Validation Dashboard**
-        View comprehensive model evaluation metrics including accuracy, precision, recall, 
-        and robustness tests performed on real judicial opinions.
-        """)
-        if st.button("📈 View Dashboard", use_container_width=True, key="btn_validation"):
-            st.session_state.current_page = "How the System Was Evaluated"
-            st.rerun()
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("""
-        ### 📋 **Evaluation Log**
-        Explore raw evaluation records for all analyzed cases. View case details, model 
-        confidence levels, and robustness scores with two display modes.
-        """)
-        if st.button("📝 View Log", use_container_width=True, key="btn_log"):
-            st.session_state.current_page = "Evaluation Log"
-            st.rerun()
-    
-    with col2:
-        st.markdown("""
-        ### ⚖️ **Case Similarity**
-        Enter your case facts to find structurally similar judicial decisions. Discover 
-        how courts weigh factors in comparable situations.
-        """)
-        if st.button("🔎 Find Cases", use_container_width=True, key="btn_similarity"):
-            st.session_state.current_page = "Case Similarity"
-            st.rerun()
-    
-    st.markdown("---")
-    
-    # Feature highlights
-    st.subheader("✨ Key Features")
+if st.session_state.page == "Home":
+
+    st.title("⚖ Equitable Distribution Analyzer")
+
+    st.write(
+        "Analyze divorce opinions and identify how courts weigh statutory equitable-distribution factors."
+    )
+
+    st.divider()
+
     col1, col2, col3 = st.columns(3)
-    with col1:
-        st.info("**🤖 AI-Powered Analysis**\n\nGPT-4 backed factor extraction from legal text")
-    with col2:
-        st.info("**📊 Validated Results**\n\n100% accuracy on labeled cases with robustness testing")
-    with col3:
-        st.info("**🔗 Smart Matching**\n\nFind precedents based on legal reasoning patterns")
-    
-    st.markdown("---")
-    
-    # Tips section
-    with st.expander("💡 Getting Started Tips", expanded=False):
-        st.markdown("""
-        **For Case Analysis:**
-        - Start with the **Analyzer** to understand factors in specific opinions
-        - Review the **Validation Dashboard** to understand model reliability
-        
-        **For Legal Research:**
-        - Use **Case Similarity** to find precedents related to your factors
-        - Check the **Evaluation Log** for detailed case-by-case analysis
-        
-        **About the System:**
-        - Trained on NY equitable distribution law (DRL § 236(B)(5))
-        - Identifies 16 statutory factors courts consider
-        - Focus on dominant judicial reasoning, not keyword matching
-        """)
 
-elif page == "Analyzer":
+    with col1:
+        with st.container(border=True):
+            st.subheader("🔎 Analyze Case")
+            st.write(
+                "Upload divorce opinions and extract the equitable-distribution factors the court relied on most heavily."
+            )
+
+            if st.button("Open Analyzer"):
+                st.session_state.page= "Analyzer"
+                st.rerun()
+
+    with col2:
+        with st.container(border=True):
+            st.subheader("🔗 Find Similar Cases")
+            st.write(
+                "Enter facts from your case and discover similar judicial decisions based on reasoning patterns."
+            )
+
+            if st.button("Find Cases"):
+                st.session_state.page = "Case Similarity"
+                st.rerun()
+
+    with col3:
+        with st.container(border=True):
+            st.subheader("📊 Validation Dashboard")
+            st.write(
+                "Explore the model's evaluation results, including accuracy, robustness, and transparency metrics."
+            )
+
+            if st.button("View Evaluation"):
+                st.session_state.page = "How the System Was Evaluated"
+                st.rerun()
+
+elif st.session_state.page == "Analyzer":
     
 
     st.title("Equitable Distribution Jurisdiction Analyzer")
@@ -237,7 +290,7 @@ elif page == "Analyzer":
             )
 # REFACTORED VALIDATION PAGE - Insert this into app.py to replace the "How the System Was Evaluated" section
 
-elif page == "How the System Was Evaluated":
+elif st.session_state.page == "How the System Was Evaluated":
 
     st.title("📊 Model Validation Dashboard")
     
@@ -401,7 +454,7 @@ elif page == "How the System Was Evaluated":
                     "Factor": factor.replace("_", " ").title(),
                     "Precision": f"{precision:.0%}",
                     "Recall": f"{recall:.0%}",
-                    "TP": tp
+                    "Correct Predictions": tp
                 })
             st.dataframe(factor_rows, use_container_width=True)
 
@@ -469,6 +522,24 @@ elif page == "How the System Was Evaluated":
 
     st.divider()
     st.subheader("🛡️ Robustness Metrics")
+    st.markdown("### Confidence Calibration")
+
+    rows = []
+    for level in confidence_total:
+        total_c = confidence_total[level]
+        correct_c = confidence_correct[level]
+        acc_c = correct_c / total_c if total_c else 0
+
+        rows.append({
+            "Confidence Level": level,
+            "Accuracy": f"{acc_c:.0%}",
+            "Cases": total_c
+        })
+
+    st.dataframe(rows, use_container_width=True)
+    st.caption(
+    "Confidence levels reflect the model's self-assessed certainty in identifying the dominant statutory factor."
+    )
     
     stability_scores = []
     truncation_scores = []
@@ -491,7 +562,7 @@ elif page == "How the System Was Evaluated":
     st.info("💡 **Note:** This dashboard reflects a fixed evaluation dataset. The Analyzer processes your uploaded files.")
 
 
-elif page == "Evaluation Log":
+elif st.session_state.page == "Evaluation Log":
 
     st.title("📋 Raw Evaluation Log")
 
@@ -590,7 +661,7 @@ elif page == "Evaluation Log":
 
 
 
-elif page == "Case Similarity":
+elif st.session_state.page == "Case Similarity":
     st.title("⚖️ Find Similar Cases")
 
     with st.expander("ℹ️ How This Works", expanded=False):
@@ -618,28 +689,28 @@ elif page == "Case Similarity":
         similar_cases = user_result["similar_cases"]
         # --- User Case Analysis ---
         st.divider()
-        st.subheader("📊 Your Case Analysis")
-        
+        st.subheader("📊 Case Analysis")
+
         col1, col2, col3 = st.columns(3)
+
         with col1:
             if result["most_weighted"]:
-                top_factor_clean = result["most_weighted"][0].replace("_", " ").title()
-                st.metric("Primary Factor", top_factor_clean)
-            else:
-                st.metric("Primary Factor", "—")
-        
-        with col2:
-            conf = result["confidence"]
-            color_map = {"high": "🟢", "medium": "🟡", "low": "🔴"}
-            st.metric("Confidence", f"{color_map.get(conf, '⚪')} {conf.capitalize()}")
-        
-        with col3:
-            factors_count = len(result["most_weighted"]) if result["most_weighted"] else 0
-            st.metric("Factors Detected", factors_count)
+                st.metric(
+                    "Primary Factor",
+                    result["most_weighted"][0].replace("_"," ").title()
+                )
 
-        # --- Explanation ---
-        with st.expander("📝 Model's Reasoning", expanded=True):
-            st.info(result["explanation"])
+        with col2:
+            st.metric("Confidence", result["confidence"].title())
+
+        with col3:
+            st.metric("Factors Detected", len(result["most_weighted"]))
+
+        st.divider()
+
+        st.subheader("Model Explanation")
+
+        st.info(result["explanation"])
 
         
 
@@ -669,51 +740,36 @@ elif page == "Case Similarity":
         if not similar_cases:
             st.warning("❌ No similar cases found.")
         else:
-            for idx, s in enumerate(similar_cases, 1):
+            for s in similar_cases:
 
                 score = float(s["score"]) if s["score"] else 0.0
                 pct = round(score * 100)
 
-                case_title = s["file"].replace(".txt", "").replace("_", " ").title()
-                judge = s.get("judge", "Unknown")
-                court = s.get("metadata", {}).get("COURT", "—")
-                year = s.get("metadata", {}).get("YEAR", "—")
+                case_title = s["file"].replace(".txt","").replace("_"," ").title()
+
+                judge = s.get("judge","Unknown")
+                court = s.get("metadata",{}).get("COURT","—")
+                year = s.get("metadata",{}).get("YEAR","—")
 
                 top_factor = (
-                    s["top_factor"].replace("_", " ").title()
+                    s["top_factor"].replace("_"," ").title()
                     if s.get("top_factor")
                     else "Unknown"
                 )
 
-                with st.container():
+                st.markdown(
+                    f"""
+                    <div class="case-card">
+                    <b>{case_title}</b><br>
+                    Judge: {judge} | Court: {court} | Year: {year}<br>
+                    Dominant Factor: {top_factor}<br>
+                    Match Score: <b>{pct}%</b>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
-                    st.markdown(f"### ⚖️ {case_title}")
-
-                    col1, col2, col3 = st.columns([2,1,1])
-
-                    with col1:
-                        st.write(f"**Judge:** {judge}")
-                        st.write(f"**Dominant Factor:** {top_factor}")
-
-                    with col2:
-                        st.write(f"**Court:** {court}")
-                        st.write(f"**Year:** {year}")
-
-                    with col3:
-                        st.metric("Match", f"{pct}%")
-
-                    st.progress(score)
-
-                    if s.get("most_weighted"):
-                        st.caption(
-                            "Factors: " +
-                            ", ".join(f.replace("_"," ") for f in s["most_weighted"])
-                        )
-
-                    st.divider()
-                    
-                    # Similarity bar
-                  #  st.progress(min(max(score, 0.0), 1.0), text=f"{percentage}% structural match")
+                st.progress(score)
 
         # --- Summary recommendation ---
         st.divider()

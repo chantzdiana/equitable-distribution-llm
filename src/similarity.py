@@ -60,7 +60,7 @@ def compute_idf(path="data/eval/eval_log.jsonl"):
         idf[factor] = math.log(total_cases / (1 + factor_counts[factor]))
 
     return idf
-def apply_idf_weights(vector, factors, idf):
+def apply_idf_weights(vector):
 
     weighted = []
 
@@ -88,11 +88,7 @@ def find_most_similar_cases(query_vector, query_text,top_k=8, path="data/eval/ev
             if not vec:
                 continue
 
-            weighted_vec = apply_idf_weights(
-                vec,
-                rec.get("most_weighted", []),
-                idf
-            )
+            weighted_vec = apply_idf_weights(vec)
             factor_score = cosine_similarity(query_vector, weighted_vec)
 
             fact_score = text_similarity(
