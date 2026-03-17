@@ -144,7 +144,7 @@ def extract_factors_llm(text: str, use_cache=True) -> dict:
 
     1. Identify which statutory factors are meaningfully discussed. 
     2. Rank the TOP THREE most important factors in order of importance.
-    3. The FIRST factor must be the most decisive driver of the court’s reasoning.
+    3. The FIRST factor must be the most decisive driver of the court's reasoning.
     4. Do NOT guess.
     5. Do NOT infer from background facts alone.
     6. Focus ONLY on judicial reasoning language.
@@ -190,13 +190,7 @@ def extract_factors_llm(text: str, use_cache=True) -> dict:
     Use ONLY these factors:
 
     {schema_json}
-
-    Case text:
-    {text}
     """
-
-
-
 
     chunks = list(chunk_text(text))
 
@@ -221,9 +215,18 @@ def extract_factors_llm(text: str, use_cache=True) -> dict:
         content = response.choices[0].message.content.strip()
 
         try:
-            parsed = json.loads(content)
+            # Strip markdown code fences if present
+            cleaned = content.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("```")[1]
+                if cleaned.startswith("json"):
+                    cleaned = cleaned[4:]
+                cleaned = cleaned.strip()
+            parsed = json.loads(cleaned)
             chunk_results.append(parsed)
-        except:
+        except json.JSONDecodeError as e:
+            print(f"  [Warning] Failed to parse JSON from chunk: {e}")
+            print(f"  [Raw response]: {content[:200]}")
             continue
 
     

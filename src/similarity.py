@@ -60,13 +60,16 @@ def compute_idf(path="data/eval/eval_log.jsonl"):
         idf[factor] = math.log(total_cases / (1 + factor_counts[factor]))
 
     return idf
-def apply_idf_weights(vector):
+def apply_idf_weights(vector, idf):
+    from src.extract_factors import FACTOR_SCHEMA
 
     weighted = []
 
-    for val in vector:
+    for i, val in enumerate(vector):
         if val > 0:
-            weighted.append(val * 1.5)  # simple importance boost
+            factor = FACTOR_SCHEMA[i]
+            weight = idf.get(factor, 1.0)
+            weighted.append(val * weight)
         else:
             weighted.append(0)
 
@@ -88,7 +91,7 @@ def find_most_similar_cases(query_vector, query_text,top_k=8, path="data/eval/ev
             if not vec:
                 continue
 
-            weighted_vec = apply_idf_weights(vec)
+            weighted_vec = apply_idf_weights(vec, idf)
             factor_score = cosine_similarity(query_vector, weighted_vec)
 
             fact_score = text_similarity(

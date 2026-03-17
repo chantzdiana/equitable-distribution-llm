@@ -22,75 +22,120 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+
+
 st.markdown("""
 <style>
 
-/* background */
+/* ── Base ── */
 .stApp {
-    background-color: #0f172a;
+    background-color: #f5f7fa;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
 }
-
-/* titles */
-h1, h2, h3 {
-    color: #e2e8f0;
-}
-
-/* card styling */
-div[data-testid="stContainer"] {
-    background-color: #1e293b;
-    padding: 20px;
-    border-radius: 14px;
-    border: 1px solid #334155;
-}
-
-/* buttons */
-button[kind="secondary"] {
-    border-radius: 10px;
-}
-
-/* sidebar */
-section[data-testid="stSidebar"] {
-    background-color: #111827;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-
-st.markdown("""
-<style>
 
 .block-container {
-    padding-top: 2rem;
+    padding-top: 2.5rem;
+    max-width: 1100px;
 }
 
-.main-title {
-    font-size: 42px;
+/* ── Typography ── */
+h1, h2, h3 {
+    color: #0d2340 !important;
     font-weight: 700;
-    text-align: center;
+    letter-spacing: -0.02em;
 }
 
-.card {
-    background-color: #f8f9fb;
-    padding: 20px;
+p, li, .stMarkdown {
+    color: #374151;
+}
+
+/* ── Sidebar ── */
+section[data-testid="stSidebar"] {
+    background-color: #ffffff;
+    border-right: 1px solid #e5e9f0;
+}
+
+section[data-testid="stSidebar"] * {
+    color: #0d2340 !important;
+}
+
+/* ── Cards (st.container with border) ── */
+div[data-testid="stContainer"] {
+    background-color: #ffffff;
+    border: 1px solid #dde3ed;
     border-radius: 12px;
-    border: 1px solid #e6e8ec;
-    min-height: 140px;
+    padding: 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
+/* ── Case cards (raw HTML) ── */
+.case-card {
+    padding: 18px 20px;
+    border-radius: 10px;
+    border: 1px solid #dde3ed;
+    background: #ffffff;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    color: #0d2340;
+    line-height: 1.6;
+}
+
+/* ── Metric cards ── */
 .metric-card {
-    background-color: white;
+    background-color: #ffffff;
     padding: 18px;
     border-radius: 10px;
-    border: 1px solid #e5e5e5;
+    border: 1px solid #dde3ed;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
-.case-card {
-    padding: 16px;
-    border-radius: 10px;
-    border: 1px solid #e6e6e6;
-    background: white;
-    margin-bottom: 12px;
+/* ── Buttons ── */
+div.stButton > button {
+    background-color: #0d2340;
+    color: #ffffff !important;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 0.45rem 1.2rem;
+    transition: background 0.2s ease;
+}
+
+div.stButton > button * {
+    color: #ffffff !important;
+}
+
+div.stButton > button:hover {
+    background-color: #163a6b;
+    color: #ffffff !important;
+}
+
+div.stButton > button:hover * {
+    color: #ffffff !important;
+}
+
+/* ── Dividers ── */
+hr {
+    border-color: #e5e9f0;
+}
+
+/* ── Info boxes ── */
+div[data-testid="stAlert"] {
+    background-color: #eef3fb;
+    border: 1px solid #c5d5ef;
+    border-radius: 8px;
+    color: #0d2340;
+}
+
+/* ── Tabs ── */
+button[data-baseweb="tab"] {
+    color: #6b7280;
+    font-weight: 500;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+    color: #0d2340;
+    border-bottom: 2px solid #0d2340;
 }
 
 </style>
@@ -433,7 +478,8 @@ elif st.session_state.page == "How the System Was Evaluated":
     with col2:
         st.metric("Cases Evaluated", total)
     with col3:
-        st.metric("Total Logged", len(eval_records))
+        unique_cases = len(set(rec["file"] for rec in eval_records))
+        st.metric("Total Logged", unique_cases)
 
     # Tabbed results
     tab1, tab2, tab3, tab4 = st.tabs(["📊 Factor Analysis", "🔴 Errors", "📋 All Cases", "👨‍⚖️ Judges"])
@@ -466,19 +512,7 @@ elif st.session_state.page == "How the System Was Evaluated":
             st.warning(f"⚠️ {len(error_cases)} case(s) misclassified:")
             st.dataframe(error_cases, use_container_width=True)
         
-        st.subheader("Confidence Reliability")
-        conf_rows = []
-        for level in sorted(confidence_total.keys()):
-            total_c = confidence_total[level]
-            correct_c = confidence_correct[level]
-            acc_c = correct_c / total_c if total_c > 0 else 0
-            conf_rows.append({
-                "Confidence": level.capitalize(),
-                "Accuracy": f"{acc_c:.0%}",
-                "Correct": correct_c,
-                "Total": total_c
-            })
-        st.dataframe(conf_rows, use_container_width=True)
+        
 
     with tab3:
         st.subheader("All Evaluation Cases")
@@ -515,10 +549,10 @@ elif st.session_state.page == "How the System Was Evaluated":
                             freq = count / judge_case_count[judge]
                             st.caption(f"• {factor.replace('_', ' ')}: {freq:.0%}")
                 with col2:
-                    st.markdown("**Most Common Factors Mentioned:**")
+                    st.markdown("**Factor Appearance Count:**")
                     if judge_factor_counter[judge]:
                         for factor, count in judge_factor_counter[judge].most_common(3):
-                            st.caption(f"• {factor.replace('_', ' ')}")
+                            st.caption(f"• {factor.replace('_', ' ')}: {count} appearance(s)")
 
     st.divider()
     st.subheader("🛡️ Robustness Metrics")
@@ -543,21 +577,38 @@ elif st.session_state.page == "How the System Was Evaluated":
     
     stability_scores = []
     truncation_scores = []
+    noise_scores = []
     for rec in eval_records:
         if "stability" in rec:
             stability_scores.append(rec["stability"])
         if "truncation_robustness" in rec:
             truncation_scores.append(rec["truncation_robustness"])
+        if "noise_robustness" in rec:
+            noise_scores.append(rec["noise_robustness"])
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         if stability_scores:
             avg_stability = sum(stability_scores) / len(stability_scores)
             st.metric("Consistency Across Runs", f"{avg_stability:.2f}/1.0")
+            st.caption("Same top factor predicted across repeated runs on the same case.")
     with col2:
         if truncation_scores:
             avg_trunc = sum(truncation_scores) / len(truncation_scores)
-            st.metric("Reasoning on Partial Text", f"{avg_trunc:.2f}/1.0")
+            st.metric("Truncation Robustness", f"{avg_trunc:.2f}/1.0")
+            st.caption("Top factor consistent when only first half, second half, or middle of the opinion is shown.")
+    with col3:
+        if noise_scores:
+            avg_noise = sum(noise_scores) / len(noise_scores)
+            st.metric("Noise Robustness", f"{avg_noise:.2f}/1.0")
+            st.caption("Top factor consistent after punctuation removal and random sentence dropout.")
+    with col4:
+        total_robustness_cases = len(set(
+            rec["file"] for rec in eval_records
+            if "truncation_robustness" in rec
+        ))
+        st.metric("Cases Tested", total_robustness_cases)
+        st.caption("Number of unique opinions used in robustness evaluation.")
 
     st.info("💡 **Note:** This dashboard reflects a fixed evaluation dataset. The Analyzer processes your uploaded files.")
 
@@ -654,6 +705,7 @@ elif st.session_state.page == "Evaluation Log":
                     st.markdown("**Robustness Scores:**")
                     st.caption(f"Stability: {r.get('stability', 0):.2f}")
                     st.caption(f"Truncation Robustness: {r.get('truncation_robustness', 0):.2f}")
+                    st.caption(f"Noise Robustness: {r.get('noise_robustness', 0):.2f}")
                 
                 st.divider()
                 st.markdown("**Model Explanation:**")

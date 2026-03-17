@@ -104,19 +104,21 @@ def evaluate_cases(cases):
         metadata["FILE"] = filename
         metadata_list.append(metadata)
 
-        RUNS = 2
+        RUNS = 1
         run_outputs = []
 
         for _ in range(RUNS):
             out = extract_factors_llm(text, use_cache=False)
             run_outputs.append(out)
 
-            full_top1 = out["most_weighted"][0] if out["most_weighted"] else None
+        full_top1 = run_outputs[0]["most_weighted"][0] if run_outputs[0]["most_weighted"] else None
 
-            trunc_scores.append(truncation_test(text, full_top1))
-            noise_scores.append(noise_test(text, full_top1))
-            print(f"  Truncation robustness: {trunc_scores[-1]:.2f}")
-            print(f"  Noise robustness: {noise_scores[-1]:.2f}")
+        case_trunc = truncation_test(text, full_top1)
+        case_noise = noise_test(text, full_top1)
+        trunc_scores.append(case_trunc)
+        noise_scores.append(case_noise)
+        print(f"  Truncation robustness: {case_trunc:.2f}")
+        print(f"  Noise robustness: {case_noise:.2f}")
 
         # stability
         top_predictions = [
@@ -143,8 +145,8 @@ def evaluate_cases(cases):
                 "most_weighted": out["most_weighted"],
                 "confidence": out["confidence"],
                 "mentioned": out["mentioned"],
-                "truncation_robustness": trunc_scores[-1],
-                "noise_robustness": noise_scores[-1],
+                "truncation_robustness": case_trunc,
+                "noise_robustness": case_noise,
                 "factor_vector": vector,
                 "explanation": out["explanation"],
                 "top_factor": out["most_weighted"][0] if out["most_weighted"] else None,
@@ -168,7 +170,7 @@ def evaluate_against_labels(results, metadata):
     with open("data/eval/human_labels.csv") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            labels[row["file"]] = row["correct_factor"]
+            labels[row["file"].strip().lower()] = row["correct_factor"]
 
     top1 = 0
     top3 = 0
@@ -176,7 +178,7 @@ def evaluate_against_labels(results, metadata):
 
     for meta, res in zip(metadata, results):
 
-        file = meta["FILE"]
+        file = meta["FILE"].strip().lower()
 
         if file not in labels:
             continue
@@ -200,7 +202,7 @@ def evaluate_against_labels(results, metadata):
 
 if __name__ == "__main__":
 
-    cases = load_cases("data/raw/eval_cases")
+    cases = load_cases("data/raw/eval_cases") + load_cases("data/raw/ny_real_snippets")
 
     eval_records, results, metadata, trunc_scores, noise_scores = evaluate_cases(cases)
 
