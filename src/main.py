@@ -104,7 +104,7 @@ def evaluate_cases(cases):
         metadata["FILE"] = filename
         metadata_list.append(metadata)
 
-        RUNS = 1
+        RUNS = 3
         run_outputs = []
 
         for _ in range(RUNS):
