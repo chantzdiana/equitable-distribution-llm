@@ -181,6 +181,7 @@ def evaluate_against_labels(results, metadata):
         file = meta["FILE"].strip().lower()
 
         if file not in labels:
+            print(f"  [Skipped] No human label for: {file}")
             continue
 
         total += 1

@@ -275,9 +275,18 @@ elif st.session_state.page == "Analyzer":
             )
 
             # ---- Context Summary ----
-            jurisdictions = {m.get("JURISDICTION") for m in case_metadata if "JURISDICTION" in m}
-            courts = {m.get("COURT") for m in case_metadata if "COURT" in m}
-            years = sorted(int(m["YEAR"]) for m in case_metadata if "YEAR" in m)
+            jurisdictions = {
+                m["JURISDICTION"].strip() for m in case_metadata
+                if "JURISDICTION" in m and m.get("JURISDICTION", "").strip()
+            }
+            courts = {
+                m["COURT"].strip() for m in case_metadata
+                if "COURT" in m and m.get("COURT", "").strip()
+            }
+            years = sorted(
+                int(m["YEAR"]) for m in case_metadata
+                if "YEAR" in m and m["YEAR"].strip().isdigit()
+            )
 
             st.markdown("**Case Context**")
             st.write(f"Jurisdiction analyzed: {', '.join(jurisdictions)}")
