@@ -1,0 +1,7 @@
+streamlit
+openai
+sentence-transformers
+python-dotenv
+numpy
+torch --index-url https://download.pytorch.org/whl/cpu
+scikit-learn
