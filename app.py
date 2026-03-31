@@ -225,10 +225,10 @@ elif st.session_state.page == "Analyzer":
     )
 
     uploaded_files = st.file_uploader(
-        "Upload case text files (.txt)",
-        type="txt",
-        accept_multiple_files=True
-    )
+    "Upload case files (.txt or .pdf)",
+    type=["txt", "pdf"],
+    accept_multiple_files=True
+)
 
     if st.button("Analyze"):
         if not uploaded_files:
@@ -241,7 +241,14 @@ elif st.session_state.page == "Analyzer":
                 for file in uploaded_files:
 
                     filename = file.name
-                    text = file.read().decode("utf-8")
+                    if filename.endswith(".pdf"):
+                        import pdfplumber, io
+                        with pdfplumber.open(io.BytesIO(file.read())) as pdf:
+                            text = "\n".join(
+                                page.extract_text() or "" for page in pdf.pages
+                            )
+                    else:
+                        text = file.read().decode("utf-8")
 
                     metadata = extract_metadata(text)
                     case_metadata.append(metadata)
