@@ -8,7 +8,7 @@ import streamlit as st
 def load_embedding_model():
     return SentenceTransformer("all-MiniLM-L6-v2")
 
-embedding_model = load_embedding_model()
+
 
 def cosine_similarity(v1, v2):
     dot = sum(a*b for a, b in zip(v1, v2))
@@ -20,9 +20,9 @@ def cosine_similarity(v1, v2):
 
     return dot / (mag1 * mag2)
 def text_similarity(text1, text2):
-
-    emb1 = embedding_model.encode(text1)
-    emb2 = embedding_model.encode(text2)
+    model = load_embedding_model()
+    emb1 = model.encode(text1)
+    emb2 = model.encode(text2)
 
     dot = np.dot(emb1, emb2)
     mag1 = np.linalg.norm(emb1)
