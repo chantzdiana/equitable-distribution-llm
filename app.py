@@ -408,7 +408,6 @@ elif st.session_state.page == "How the System Was Evaluated":
     
    
     correct_top1 = 0
-    correct_top3 = 0
     total = 0
 
     confidence_counter = Counter()
@@ -448,10 +447,7 @@ elif st.session_state.page == "How the System Was Evaluated":
         if top1_correct:
             correct_top1 += 1
 
-        # ---- TOP 3 ----
-        top3_correct = human_clean in model_clean
-        if top3_correct:
-            correct_top3 += 1
+   
 
         confidence_total[confidence] += 1
         if top1_correct:
@@ -478,7 +474,7 @@ elif st.session_state.page == "How the System Was Evaluated":
 
     # ---- FINAL ACCURACY ----
     top1_accuracy = correct_top1 / total if total else 0
-    top3_accuracy = correct_top3 / total if total else 0
+   
     if total == 0:
         st.error("No matching files between eval_log and human_labels.csv")
         st.stop()
@@ -490,7 +486,6 @@ elif st.session_state.page == "How the System Was Evaluated":
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Top-1 Accuracy", f"{top1_accuracy:.0%}")
-        st.metric("Top-3 Accuracy", f"{top3_accuracy:.0%}")
     with col2:
         st.metric("Cases Evaluated", total)
     with col3:
@@ -746,8 +741,6 @@ elif st.session_state.page == "Case Similarity":
 
     if st.button("🔍 Find Similar Cases", use_container_width=True) and user_text.strip():
 
-        #from src.vectorize import build_factor_vector
-       # from src.similarity import find_most_similar_cases
 
         # --- Analyze user case ---
         with st.spinner("⏳ Analyzing case..."):

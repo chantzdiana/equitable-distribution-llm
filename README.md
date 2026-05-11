@@ -1,153 +1,215 @@
-# Equitable Distribution LLM
+# Equitable Distribution Analyzer
 
-# Equitable Distribution Factor Analysis (Prototype)
+A computational tool for analyzing New York equitable distribution opinions. The system identifies which statutory factors under NY Domestic Relations Law §236(B)(5)(d) actually drove a court's reasoning — not merely which ones were mentioned — and uses those factor profiles to find structurally similar prior decisions.
 
-## Overview
-
-This project is a prototype legal analytics tool designed to help lawyers understand **which statutory factors courts actually emphasize** when applying equitable distribution in divorce cases.
-
-While equitable distribution statutes—such as New York Domestic Relations Law § 236(B)(5)(d)—enumerate many factors, courts rarely weigh all of them in every case. Instead, judicial opinions tend to emphasize a smaller subset of considerations depending on the facts. This project explores whether large language models (LLMs) can help surface those patterns more efficiently than traditional rule-based approaches.
-
-The prototype analyzes judicial opinions (or excerpts) and identifies which statutory factors appear to play a meaningful role in the court’s reasoning. It then aggregates results across cases to provide **jurisdiction-level insight** into factor emphasis.
+**Live app:** [equitable-distribution-llm.streamlit.app](https://equitable-distribution-llm.streamlit.app)
 
 ---
 
-## Motivation
+## The Problem This Solves
 
-For practicing family law attorneys, equitable distribution analysis is time-consuming and often qualitative. Lawyers must read many cases to understand how a given jurisdiction tends to reason about:
+New York divorce law gives judges 16 statutory factors to consider when dividing marital property. Courts do not weight them equally, and judicial opinions routinely mention many factors while actually relying on one or two. Identifying which factors are doing real work in the reasoning requires parsing evaluative judicial language — something keyword-based tools like Westlaw cannot do.
 
-* contributions to marital property or career development
-* custodial parent housing needs
-* dissipation or improper transfers
-* duration of marriage and related considerations
-
-This tool is motivated by a practical question a real lawyer might ask:
-
-> *“In this jurisdiction, which equitable-distribution factors do courts actually focus on most often?”*
-
-By automating part of that analysis, the project aims to:
-
-* reduce research time and cost,
-* help lawyers prioritize arguments,
-* and improve access to justice by lowering informational barriers.
+This tool is built around a single distinction: **mentioned vs. decisive**. A factor appearing in an opinion is not the same as a factor driving the outcome. The LLM extraction layer is specifically designed to detect which factors courts treat as outcome-determinative.
 
 ---
 
 ## What the System Does
 
-1. **Input**
+### Analyzer Page
+Upload one or more judicial opinion files (`.txt` or `.pdf`). The system sends each to GPT-4o-mini with a prompt designed to detect decisive legal reasoning language — phrases like "primary consideration," "determinative," and "the court relies heavily on." For each case it returns:
 
-   * Short case excerpts or sample opinions (currently `.txt` files)
-   * Each file includes simple metadata (jurisdiction, court, year)
+- The dominant statutory factor
+- A confidence level (high / medium / low)
+- A plain-English explanation of the court's reasoning
 
-2. **Extraction**
+Across all uploaded cases, it produces an aggregate Factor Emphasis summary showing which factors were frequently, sometimes, or rarely decisive — along with the statutory citation and typical reasoning for the dominant factor.
 
-   * A large language model analyzes the text
-   * It outputs a structured JSON object indicating whether each statutory factor is emphasized
+### Case Similarity Page
+Enter a plain-language description of a case's facts. The system runs the full pipeline on the input text, builds a 16-dimensional factor vector, and compares it against all indexed cases using a hybrid similarity score:
 
-3. **Aggregation**
+- **70%** IDF-weighted cosine similarity between factor vectors
+- **30%** semantic text similarity via sentence-transformer embeddings
 
-   * Results are aggregated across multiple cases
-   * Factors are summarized as:
+Returns the top 8 most structurally similar cases from the evaluation dataset.
 
-     * *Frequently emphasized*
-     * *Sometimes emphasized*
-     * *Rarely emphasized*
-
-4. **Context Summary**
-
-   * The system prints a lawyer-readable summary of:
-
-     * jurisdiction
-     * courts
-     * year range
-     * number of cases analyzed
+### Validation Dashboard
+Shows how accurately the model performs against 22 human-labeled New York opinions, including Top-1 accuracy, precision and recall by factor, stability across repeated runs, truncation robustness, and noise robustness.
 
 ---
 
-## Example Output
+## How It Works
+
+### 1. LLM Factor Extraction — `src/extract_factors.py`
+
+Each opinion is split into 2,500-word chunks. Each chunk is sent to GPT-4o-mini with a prompt instructing it to detect decisive reasoning language rather than count factor mentions. Results are aggregated across chunks: `mentioned` flags use logical OR, `most_weighted` lists merge and deduplicate to top 3, confidence takes the maximum, explanation uses the first non-empty response.
+
+Results are cached by MD5 hash of the input text to avoid redundant API calls.
+
+### 2. Vectorization — `src/vectorize.py`
+
+The LLM's JSON output is converted into a 16-dimensional numerical vector — one position per statutory factor, always in the same fixed order. Encoding:
+
+| Condition | Value |
+|---|---|
+| Not mentioned | 0.0 |
+| Mentioned, not decisive | 0.5 |
+| 3rd most weighted | 0.7 |
+| 2nd most weighted | 0.85 |
+| 1st most weighted | 1.0 |
+
+The LLM decides which factors mattered and in what order. The vector function mechanically translates that judgment into numbers. They are completely separate steps.
+
+### 3. Similarity Search — `src/similarity.py`
+
+Factor vectors are compared using cosine similarity — a measure of the angle between two vectors in 16-dimensional space. Before comparison, stored vectors are adjusted by IDF (Inverse Document Frequency) weights that downweight common factors and amplify rare ones, preventing the similarity search from being dominated by the most frequent factor in the dataset.
+
+A second signal — semantic text similarity via the `all-MiniLM-L6-v2` sentence-transformer model — captures factual narrative similarity between cases. The two signals are blended 70/30.
+
+### 4. Evaluation — `src/main.py`
+
+Runs offline against the labeled dataset. For each case: LLM extraction (configurable number of runs), truncation robustness (first half / second half / middle third), noise robustness (punctuation removal + sentence dropout), vectorization, and storage to `data/eval/eval_log.jsonl`.
+
+---
+
+## Evaluation Dataset
+
+22 human-labeled New York equitable distribution opinions covering 11 of the 16 statutory factors:
+
+| Factor | Cases |
+|---|---|
+| contributions_to_marital_property_and_career | 8 |
+| custodial_parent_residence_needs | 2 |
+| wasteful_dissipation_of_assets | 3 |
+| difficulty_of_asset_valuation_or_business_interests | 1 |
+| domestic_violence | 1 |
+| contributions_to_marital_property_and_career (Elkus) | 1 |
+| loss_of_inheritance_and_pension_rights | 1 |
+| other_just_and_proper_factor | 1 |
+| tax_consequences | 1 |
+| future_financial_circumstances | 1 |
+| liquidity_of_assets | 1 |
+| loss_of_health_insurance | 1 |
+
+---
+
+## Evaluation Results
+
+Benchmarked against 22 human-labeled opinions:
+
+- **Top-1 Accuracy:** 100%
+- **Stability:** 1.00 / 1.0
+- **Truncation Robustness:** 0.44 / 1.0
+- **Noise Robustness:** 0.69 / 1.0
+
+Top-1 accuracy reflects the model's #1 predicted factor matching the human-labeled ground truth. Truncation robustness measures consistency when the model sees only a portion of each opinion — lower scores indicate decisive language is concentrated in one section rather than distributed throughout.
+
+---
+
+## Project Structure
 
 ```
-=== Analysis Context ===
-
-Jurisdiction: New York
-Courts: Supreme Court, Appellate Division
-Years Covered: 1996–2019
-Number of Cases Analyzed: 3
-
-=== New York Equitable Distribution Factor Emphasis ===
-
-Frequently emphasized:
-- contributions_to_marital_property_and_career (67%)
-
-Sometimes emphasized:
-- custodial_parent_housing_needs (33%)
-- wasteful_dissipation_of_assets (33%)
-- improper_transfers_or_encumbrances (33%)
-- duration_of_marriage_age_and_health (33%)
+equitable-distribution-llm/
+├── app.py                          # Streamlit web interface (5 pages)
+├── main.py                         # Offline evaluation pipeline
+├── requirements.txt
+├── src/
+│   ├── extract_factors.py          # LLM extraction, chunking, caching
+│   ├── vectorize.py                # 16-dim factor vector encoding
+│   ├── similarity.py               # Cosine similarity, IDF, embeddings
+│   ├── user_similarity.py          # Pipeline orchestrator for app
+│   ├── cache.py                    # MD5 hash-based result cache
+│   └── factor_explanations.py      # Statutory citations and summaries
+├── data/
+│   ├── raw/
+│   │   ├── eval_cases/             # Labeled evaluation opinions (.txt)
+│   │   └── ny_real_snippets/       # Additional case excerpts (.txt)
+│   ├── eval/
+│   │   ├── eval_log.jsonl          # Per-case evaluation records
+│   │   ├── human_labels.csv        # Ground truth factor labels
+│   │   └── run_history.jsonl       # Historical evaluation summaries
+│   └── cache/
+│       └── cache.json              # LLM result cache (gitignored)
 ```
 
 ---
 
-## Methodology
+## Running Locally
 
-### Factor Schema
+**Prerequisites:** Python 3.10+, OpenAI API key
 
-The factor schema is derived directly from **New York Domestic Relations Law § 236(B)(5)(d)**. Closely related statutory considerations are grouped into higher-level conceptual factors to reflect how courts typically discuss them in practice.
+```bash
+git clone https://github.com/chantzdiana/equitable-distribution-llm.git
+cd equitable-distribution-llm
+pip install -r requirements.txt
+```
 
-This grouping preserves fidelity to the statute while enabling structured extraction.
+Create a `.env` file in the project root:
+```
+OPENAI_API_KEY=sk-your-key-here
+```
 
-### Rule-Based vs LLM Extraction
+Run the Streamlit app:
+```bash
+streamlit run app.py
+```
 
-The project originally implemented a rule-based baseline using keyword matching. That approach consistently over-identified factors due to lack of context and inability to handle negation or emphasis.
+Run the evaluation pipeline:
+```bash
+python3 -m src.main
+```
 
-The LLM-based approach proved more selective and better aligned with judicial reasoning, particularly in cases where courts explicitly downplayed certain factors or focused narrowly on one consideration.
+---
+
+## Adding New Cases
+
+1. Obtain the full opinion text and save as a `.txt` file with a metadata header:
+```
+JURISDICTION: New York
+COURT: Appellate Division, First Department
+YEAR: 1991
+JUDGE: Rosenberger
+```
+2. Place the file in `data/raw/eval_cases/`
+3. Add a row to `data/eval/human_labels.csv`:
+```
+filename.txt,dominant_factor_name
+```
+4. Run `python3 -m src.main` to regenerate `eval_log.jsonl`
+5. Push `eval_log.jsonl` and `human_labels.csv` — the deployed app immediately searches the expanded dataset
+
+---
+
+## Deployment
+
+Deployed to [Streamlit Community Cloud](https://streamlit.io/cloud). The app auto-redeploys on every push to the `main` branch. The OpenAI API key is stored in Streamlit's encrypted secrets manager and never appears in the repository.
 
 ---
 
 ## Limitations
 
-* The current prototype uses **sample cases and short excerpts**, not a comprehensive corpus.
-* Results are **descriptive**, not predictive.
-* The system does **not** attempt to forecast outcomes or assign numerical weights.
-* Judge-level analysis is not yet implemented.
-* LLM output is non-deterministic; defensive parsing is used to ensure robustness.
-
-These limitations are intentional to keep the prototype scoped and ethically responsible.
-
----
-
-## Future Work
-
-Planned or possible extensions include:
-
-* Judge-level aggregation (descriptive, not predictive)
-* Support for additional jurisdictions
-* A simple user interface allowing lawyers to paste case text
-* Exporting results to CSV for use in briefs or memos
-
-The architecture is designed to support these extensions without major refactoring.
+- **Dataset size:** 22 cases covering 11 of 16 statutory factors. Results are descriptive, not statistically generalizable.
+- **Single annotator:** Ground truth labels were created by one annotator. Inter-annotator agreement has not yet been measured.
+- **Single jurisdiction:** New York only. The methodology could extend to other equitable distribution states but has not been tested.
+- **Mentioned vs. decisive:** The model correctly avoids over-predicting factors that are merely discussed. Cases like *Elkus v. Elkus* — which address a threshold legal question rather than factor weighing — return low confidence as expected behavior, not a failure.
+- **Results are descriptive:** The system identifies reasoning patterns in past opinions. It does not predict outcomes in any individual case.
 
 ---
 
 ## Societal Impact
 
-By reducing the cost and complexity of doctrinal research, this project aims to support more efficient and equitable legal representation. Tools that surface patterns in judicial reasoning can help lawyers better serve clients with limited resources and improve transparency in how legal standards are applied in practice.
-
----
-
-## How to Run
-
-```bash
-python src/main.py
-```
+By reducing the cost and complexity of doctrinal research, this tool aims to support more efficient legal representation. Surfacing patterns in judicial reasoning helps lawyers better understand how courts apply equitable distribution standards, improve argument prioritization, and serve clients with limited resources more effectively.
 
 ---
 
 ## Status
 
-This project is a functional prototype developed for a Computer Science for Lawyers course. It is intended as an exploratory and educational tool.
+Active development. Originally developed for a Computer Science for Lawyers course at Georgetown University Law Center. Currently expanding the case dataset and evaluation methodology toward a practitioner-facing research tool.
 
 ---
+
+## License
+
+MIT
 
 

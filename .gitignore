@@ -2,6 +2,6 @@ venv/
 .env
 __pycache__/
 *.pyc
-data/eval/
+data/eval/run_history.jsonl
 data/cache/
 .streamlit/secrets.toml
