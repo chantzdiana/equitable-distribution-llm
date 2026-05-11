@@ -14,7 +14,14 @@ The application is deployed at **equitable-distribution-llm.streamlit.app**. Eve
 
 - **Analyzer page:** Upload any of the `.txt` or `.pdf` opinion files from `data/raw/eval_cases/` to see the factor extraction in action
 - **Case Similarity page:** Type a plain-language description of a case's facts to find similar decisions
-- **Validation Dashboard:** View the full evaluation results against the 22 human-labeled cases
+- **Sample inputs for the Case Similarity page:**
+- "The wife supported her husband through medical school while 
+  working full time. After he obtained his license he filed for 
+  divorce. The only significant asset is his enhanced earning capacity."
+- "The husband transferred marital funds to a separate account 
+  shortly before the divorce action was filed, with no documentation 
+  of legitimate purpose."
+- **Validation Dashboard:** View the full evaluation results against the 21 human-labeled cases
 
 No API key, no Python, no installation needed.
 
@@ -98,14 +105,14 @@ NY Domestic Relations Law §236(B)(5)(d) lists sixteen factors courts must consi
 
 ## Evaluation Results
 
-Benchmarked against 22 human-labeled New York opinions covering 11 of the 16 statutory factors:
+Benchmarked against 21 human-labeled New York opinions. The dataset contains two types of cases: 13 synthetic simplified excerpts and 8 real appellate opinions. Overall Top-1 accuracy was 86% (18/21 labeled). On real appellate opinions specifically, the model correctly identified the dominant factor in 5 of 8 cases.
 
 | Metric | Score |
 |---|---|
-| Top-1 Accuracy | 100% (22/22) |
+| Top-1 Accuracy | 86% (18/21) |
 | Stability (consistency across repeated runs) | 1.00 / 1.0 |
-| Truncation Robustness | 0.44 / 1.0 |
-| Noise Robustness | 0.69 / 1.0 |
+| Truncation Robustness | 0.78 / 1.0 |
+| Noise Robustness | 0.81 / 1.0 |
 
 ---
 
@@ -125,34 +132,37 @@ equitable-distribution-llm/
 │   └── factor_explanations.py      # Statutory citations and summaries
 ├── data/
 │   ├── raw/
-│   │   ├── eval_cases/             # Labeled evaluation opinions (.txt)
-│   │   └── ny_real_snippets/       # Additional case excerpts (.txt)
+│   │   ├── eval_cases/             # Synthetic evaluation excerpts (.txt)
+│   │   ├── ny_real_snippets/       # Real appellate opinion excerpts (.txt)
+│   │   └── demo_cases/             # Fresh cases for testing, not used in eval
 │   └── eval/
 │       ├── eval_log.jsonl          # Pre-computed evaluation records
 │       ├── human_labels.csv        # Ground truth factor labels
 │       └── run_history.jsonl       # Historical evaluation summaries
 ```
+## Adding New Cases
 
+Save the opinion text as a .txt file with a metadata header at the top:
+
+JURISDICTION: New York
+COURT: Court of Appeals
+YEAR: 1985
+JUDGE: Wachtler
+
+Place the file in data/raw/eval_cases/ or data/raw/ny_real_snippets/
+Add a row to data/eval/human_labels.csv with the dominant factor label
+Run python3 -m src.main to regenerate eval_log.jsonl
+Push eval_log.jsonl and human_labels.csv — the deployed app immediately searches the expanded dataset
 ---
 
 ## Limitations
 
-- **Dataset size:** 22 cases covering 11 of 16 statutory factors. Results are descriptive, not statistically generalizable.
+- **Dataset size:** 21 cases covering 11 of 16 statutory factors. Results are descriptive, not statistically generalizable.
 - **Single annotator:** Ground truth labels were created by one annotator. Inter-annotator agreement is a planned next step in collaboration with a family law professor.
 - **Single jurisdiction:** New York only.
 - **Descriptive, not predictive:** The system identifies reasoning patterns in past opinions. It does not predict outcomes.
 
----
 
-## Status
-
-Active development. Originally developed for a Computer Science for Lawyers course at Georgetown University Law Center, Spring 2026. Currently expanding toward a practitioner-facing research tool in collaboration with Professor Tsoukala.
-
----
-
-## License
-
-MIT
 
 
 

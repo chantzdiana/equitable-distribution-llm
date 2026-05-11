@@ -1,0 +1,20 @@
+JURISDICTION: New York
+COURT: Court of Appeals
+YEAR: 1986
+JUDGE: Simons
+
+Price v. Price, 69 N.Y.2d 8 (1986)
+
+The parties were married in 1966. Prior to the marriage, the husband owned stock in a family corporation. During the marriage, the stock appreciated substantially in value. The husband served as an officer and director of the corporation throughout the marriage and was actively involved in its management. The wife did not work in the business but maintained the household and raised the parties' children, enabling the husband to devote himself to his professional and business activities.
+
+At issue is whether the appreciation in value of the husband's separately owned stock constitutes marital property subject to equitable distribution. The husband contends that because the stock was acquired before the marriage it is separate property and any increase in value belongs to him alone. The wife contends that her indirect contributions as homemaker and parent contributed to the conditions that allowed the husband to generate the appreciation and that she is therefore entitled to share in it.
+
+The trial court held that the appreciation was separate property. The Appellate Division modified, finding that a portion of the appreciation was marital property.
+
+We affirm the Appellate Division. Domestic Relations Law section 236(B)(1)(d)(3) expressly excludes from the definition of separate property any appreciation in value of separate property that is due in part to the contributions or efforts of the other spouse. The Legislature intended that indirect contributions, including services as a homemaker and parent, qualify as contributions for this purpose.
+
+The dispositive inquiry is whether the nontitled spouse's assistance can be said to have contributed in part to the appreciation of the asset. Where the titled spouse was actively involved in managing the asset during the marriage and the nontitled spouse's domestic contributions freed the titled spouse to devote time and energy to that management, the appreciation attributable to those active efforts is marital property to the extent of the nontitled spouse's indirect contribution.
+
+The record here supports the conclusion that the husband's active management of the corporation contributed to the appreciation in the stock's value, and that the wife's contributions as homemaker and parent were a material factor enabling that management. The appreciated value of the stock, to the extent attributable to the husband's active efforts during the marriage, is therefore marital property subject to equitable distribution.
+
+Accordingly, the order of the Appellate Division should be affirmed.
