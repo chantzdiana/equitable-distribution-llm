@@ -1,10 +1,10 @@
 # Equitable Distribution Analyzer
-
+(The full write-up is in a different file in the same directory, write-up.docx)
 A computational tool for analyzing New York equitable distribution opinions. The system identifies which statutory factors under NY Domestic Relations Law §236(B)(5)(d) actually drove a court's reasoning — not merely which ones were mentioned — and uses those factor profiles to find structurally similar prior decisions.
 
 **Live app (no setup required):** [equitable-distribution-llm.streamlit.app](https://equitable-distribution-llm.streamlit.app)
 
-> **Note for Professor Ohm and Patrick:** The easiest way to evaluate this project is to visit the live app link above. It is fully functional in any browser with no installation, no API key, and no configuration. If you would prefer to run the code locally, complete setup instructions are in the section below.
+> **Note** The easiest way to evaluate this project is to visit the live app link above. If you would prefer to run the code locally, complete setup instructions are in the section below.
 
 ---
 
@@ -23,7 +23,6 @@ The application is deployed at **equitable-distribution-llm.streamlit.app**. Eve
   of legitimate purpose."
 - **Validation Dashboard:** View the full evaluation results against the 21 human-labeled cases
 
-No API key, no Python, no installation needed.
 
 ---
 
@@ -121,10 +120,12 @@ Benchmarked against 21 human-labeled New York opinions. The dataset contains two
 ```
 equitable-distribution-llm/
 ├── app.py                          # Streamlit web interface (5 pages)
-├── main.py                         # Offline evaluation pipeline
 ├── requirements.txt
+├── README.md
+├── write-up.docx
 ├── src/
 │   ├── extract_factors.py          # LLM extraction, chunking, caching
+    ├── main.py                     # Offline evaluation pipeline
 │   ├── vectorize.py                # 16-dim factor vector encoding
 │   ├── similarity.py               # Cosine similarity, IDF, embeddings
 │   ├── user_similarity.py          # Pipeline orchestrator for app
@@ -138,7 +139,7 @@ equitable-distribution-llm/
 │   └── eval/
 │       ├── eval_log.jsonl          # Pre-computed evaluation records
 │       ├── human_labels.csv        # Ground truth factor labels
-│       └── run_history.jsonl       # Historical evaluation summaries
+│       
 ```
 ## Adding New Cases
 
@@ -157,7 +158,7 @@ Push eval_log.jsonl and human_labels.csv — the deployed app immediately search
 
 ## Limitations
 
-- **Dataset size:** 21 cases covering 11 of 16 statutory factors. Results are descriptive, not statistically generalizable.
+- **Dataset size:** 21 cases covering 9 of 16 statutory factors. Results are descriptive, not statistically generalizable.
 - **Single annotator:** Ground truth labels were created by one annotator. Inter-annotator agreement is a planned next step in collaboration with a family law professor.
 - **Single jurisdiction:** New York only.
 - **Descriptive, not predictive:** The system identifies reasoning patterns in past opinions. It does not predict outcomes.
